@@ -123,3 +123,39 @@ Phase 1 is complete when:
 - the boundary with `textus-flutter-core` is documented and respected.
 - the TFAF configuration contract is documented sufficiently for Cozy to target it.
 - specialized UI has a defined `generated/hybrid/custom` escape path without weakening the configuration-first default.
+
+
+## Source and artifact separation
+
+Phase 1 must make framework ownership and application artifact provenance visible in the source tree. Generated source, handwritten application source, configuration, and framework implementation must not be mixed.
+
+The target separation is conceptually:
+
+```text
+textus-flutter-application-framework/
+  lib/
+    ...                         # reusable framework implementation only
+
+nict-editing-studio-app/
+  lib/
+    app/                        # handwritten application composition/extensions
+    generated/                  # generated Dart; generator-owned, not hand-edited
+  config/                       # declarative TFAF application/UI configuration
+  test_support/
+    fake/                       # fake resources/repositories for development driving
+```
+
+Exact Flutter package conventions may refine these names, but the ownership boundaries are mandatory.
+
+Rules:
+
+1. TFAF contains no Editing-Studio-specific source.
+2. `generated/` is generator-owned and replaceable; handwritten code must not be placed there.
+3. `app/` contains only application-owned composition and intentional custom/hybrid extensions.
+4. `config/` is the preferred expression of standard Resource List/Detail behavior and is the future Cozy generation target.
+5. Fake data/repositories are development-driver infrastructure and must not leak into framework semantics.
+6. Generated code may depend on TFAF public APIs; TFAF must never depend on generated application code.
+7. Handwritten application code may extend generated/framework behavior only through explicit public extension points.
+8. A standard List/Detail presentation is considered successful only when the Editing Studio does not need handwritten List/Detail Widgets.
+
+This separation is part of the executable architecture and should be tested/linted where practical.
