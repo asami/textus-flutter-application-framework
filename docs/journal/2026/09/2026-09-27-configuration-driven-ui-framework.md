@@ -163,3 +163,26 @@ The primary UI dependency path is Application -> TFAF -> Core. This makes TFAF t
 This is intentionally not a strict facade rule. Editing Studio may also use Core directly for capabilities such as Capture when those capabilities are genuinely Core-level. TFAF should not become a mechanical wrapper around Core merely to hide the dependency.
 
 The architectural test is semantic ownership: application UI goes through TFAF; Core runtime capabilities may be consumed directly.
+
+
+## Seamless model/server/client connection
+
+A further founding constraint is seamless continuity between model, server, and client.
+
+TFAF should not first invent a local UI/data API and later adapt server Operations to it. The client-side Resource/DataSource and Action abstractions should be shaped while looking at the existing CML/CNCF Operation model.
+
+The fake-data phase must exercise the same semantic boundary that a generated server-operation client will later implement. This allows fake-to-server replacement without changing UI semantics.
+
+The long-term target is:
+
+```text
+Application/Domain/Operation Model
+        -> server implementation and contract
+        -> generated typed Flutter client/binding
+        -> TFAF configuration/runtime
+        -> adaptive UI
+```
+
+UI Model and Operation Model are therefore complementary inputs. UI Model defines what is presented and how interaction is structured; Operation Model defines how application information and actions are obtained/executed. Their binding should be model-visible and generator-friendly.
+
+This principle should guide early API choices even before the first real server connection is implemented.

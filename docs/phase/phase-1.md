@@ -159,3 +159,21 @@ Rules:
 8. A standard List/Detail presentation is considered successful only when the Editing Studio does not need handwritten List/Detail Widgets.
 
 This separation is part of the executable architecture and should be tested/linted where practical.
+
+
+## Model/server/client continuity constraint
+
+Phase 1 must design the fake Resource List/Detail path so it can be replaced by a server Operation-backed data source without changing the standard List/Detail UI implementation.
+
+Introduce or reserve a semantic Resource data-source boundary rather than binding framework Widgets directly to fake collections, REST, JSON, or endpoint URLs.
+
+The first fake implementation is therefore a contract proof, not a temporary shortcut.
+
+Phase 1 design/review must verify that the path can evolve toward:
+
+```text
+CML/Operation Model -> Server Operation -> typed/generated client/binding
+                    -> TFAF ResourceDataSource -> ResourceListDetail
+```
+
+A future acceptance proof should replace the fake data source with an Operation-backed implementation while retaining the same Resource List/Detail configuration and framework presentation.
