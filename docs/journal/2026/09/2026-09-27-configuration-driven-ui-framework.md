@@ -112,3 +112,45 @@ This also establishes a useful boundary:
 - Editing Studio validates the complete path.
 
 The boundary may evolve as the first Reference Application is implemented, but application-specific concepts must not be pushed into Core or TFAF merely to make the first application easier.
+
+
+## UI Model co-evolution
+
+The UI Model must not be designed and frozen in Cozy independently of executable UI experience.
+
+UI modeling and framework implementation evolve together through a feedback loop:
+
+```text
+Editing Studio requirements
+        <-> executable TFAF components
+        <-> abstract UI Model
+        <-> Cozy modeling / compilation
+```
+
+The first model concepts should therefore be validated against working framework capabilities such as Resource List, Resource Detail, Pane, Action, Navigation, Binding, and Adaptive Layout.
+
+The direction is deliberately inductive as well as model-driven:
+
+1. implement or exercise a concrete Reference Application scenario;
+2. identify the reusable application-UI semantics exposed by the scenario;
+3. validate those semantics as executable TFAF configuration/components;
+4. promote stable semantics into the abstract UI Model;
+5. make Cozy compile the model into the corresponding TFAF configuration;
+6. repeat with progressively richer Editing Studio scenarios.
+
+This prevents an abstract UI metamodel from getting ahead of the runtime while also preventing the runtime API from accidentally becoming the metamodel.
+
+### Abstraction boundary
+
+TFAF Widget/API structure is **not** the UI Model.
+
+The separation is:
+
+- **UI Model**: semantic intent, interaction, presentation relationships, and adaptive intent.
+- **TFAF Configuration**: Flutter-target execution representation of that model.
+- **TFAF Runtime**: reusable Flutter implementation that interprets the configuration.
+- **Flutter-specific implementation detail**: remains below the model boundary.
+
+This boundary is required so the UI Model can remain reusable for future non-Flutter targets even though Flutter/TFAF is its first executable proving ground.
+
+The Editing Studio Reference Application is therefore both a consumer of TFAF and an executable source of evidence for evolving the UI Model.
