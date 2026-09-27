@@ -109,3 +109,29 @@ Application/UI Model
 ```
 
 rather than generating a new Dart screen for every model change.
+
+
+## Artifact ownership and provenance
+
+The architecture distinguishes four kinds of implementation artifacts:
+
+| Artifact | Owner | Edit policy | Purpose |
+| --- | --- | --- | --- |
+| Framework source | TFAF | handwritten framework development | reusable executable UI behavior |
+| Application configuration | application / later Cozy | declarative; preferably generated from model | standard application/UI definition |
+| Generated application source | Cozy/generator | replaceable; never hand-edited | code required beyond configuration |
+| Handwritten application source | application | handwritten | composition and intentional custom/hybrid extensions |
+
+A fifth category, fake/test-support data, exists only to drive development and executable examples.
+
+These categories must remain physically recognizable in repository/package layout. The boundary is not documentation-only: it is intended to make it obvious whether a change belongs in the framework, the model/configuration, generated output, or an application-specific extension.
+
+The desired dependency direction is:
+
+```text
+application handwritten source ----+
+application generated source ------+--> TFAF public API --> textus-flutter-core
+application configuration ---------+
+```
+
+TFAF does not depend on application artifacts. Generated artifacts do not become framework source merely because the first generator or Reference Application needs them.
