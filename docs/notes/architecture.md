@@ -165,3 +165,55 @@ Rules:
 - direct Core use must correspond to an explicit Core-level capability, not convenience;
 - TFAF must not wrap/re-export every Core API merely to force a strict dependency chain;
 - Core remains independent of TFAF and applications.
+
+
+## Model-to-server-to-client continuity
+
+TFAF is designed from the beginning as the client runtime endpoint of a continuous model-driven contract, not as a UI framework with networking added later.
+
+Target continuity:
+
+```text
+CML / Application Model
+  |-- Resource / View semantics
+  |-- Operation semantics
+  |     |-- Query: collection/detail
+  |     |-- Command: action
+  |     |-- Job: asynchronous execution/status
+  |     `-- Workflow/Continuation
+  `-- UI Model
+          |
+          v
+Server Operation contract
+          |
+          v
+generated/typed client + operation binding
+          |
+          v
+TFAF Resource Data Source / Action binding
+          |
+          v
+ResourceListDetail / application UI
+```
+
+TFAF must not make Resource List/Detail depend directly on REST, JSON, endpoint URLs, or a particular transport. Standard UI consumes semantic client-side contracts such as a Resource collection/detail data source and action bindings.
+
+The same contract must support both development and production implementations:
+
+```text
+ResourceDataSource
+  |-- FakeResourceDataSource
+  `-- OperationResourceDataSource
+```
+
+Switching from fake data to server Operations must not require rewriting the standard UI.
+
+The intended semantic mapping is:
+
+- Query returning a collection -> Resource List data source
+- Query returning one resource/view -> Resource Detail data source
+- Command -> UI Action
+- asynchronous Job -> execution/progress/status presentation
+- Workflow / Continuation -> workflow/human-interaction presentation
+
+Transport/client generation belongs below this semantic boundary. Cozy/CML/CNCF integration may generate typed clients and bindings, but TFAF configuration should refer to operation/resource semantics rather than hand-coded HTTP calls.
