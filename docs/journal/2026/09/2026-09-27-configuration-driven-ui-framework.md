@@ -154,3 +154,12 @@ The separation is:
 This boundary is required so the UI Model can remain reusable for future non-Flutter targets even though Flutter/TFAF is its first executable proving ground.
 
 The Editing Studio Reference Application is therefore both a consumer of TFAF and an executable source of evidence for evolving the UI Model.
+
+
+## Dependency policy
+
+The primary UI dependency path is Application -> TFAF -> Core. This makes TFAF the application-UI layer while preserving Core as the lower-level Flutter/runtime foundation.
+
+This is intentionally not a strict facade rule. Editing Studio may also use Core directly for capabilities such as Capture when those capabilities are genuinely Core-level. TFAF should not become a mechanical wrapper around Core merely to hide the dependency.
+
+The architectural test is semantic ownership: application UI goes through TFAF; Core runtime capabilities may be consumed directly.
