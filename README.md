@@ -74,3 +74,18 @@ Each screen or presentation unit may choose an implementation policy:
 The initial target is not merely to hand-build a foldable Editing Studio application. The target is to demonstrate that the Editing Studio can be described by UI/application models and framework configuration, including adaptive/foldable behavior.
 
 See [Phase 1](docs/phase/phase-1.md) and the [initial architecture journal](docs/journal/2026/09/2026-09-27-configuration-driven-ui-framework.md).
+
+## Development status
+
+The initial Flutter package foundation is in place. Its public entry point is
+`package:textus_flutter_application_framework/textus_flutter_application_framework.dart`,
+and it depends on the sibling `textus-flutter-core` package. The first public
+configuration value is `PresentationRealization`, which supports stable JSON
+names for `framework`, `generated`, `hybrid`, and `custom`.
+
+The Resource List/Detail runtime and adaptive pane behavior in Phase 1 are not
+implemented yet. The NICT Editing Studio app currently exercises the package
+dependency and import path, not those UI capabilities.
+
+For local development, keep this repository and `textus-flutter-core` as sibling
+directories, then run `flutter pub get`, `flutter analyze`, and `flutter test`.
