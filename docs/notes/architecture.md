@@ -135,3 +135,33 @@ application configuration ---------+
 ```
 
 TFAF does not depend on application artifacts. Generated artifacts do not become framework source merely because the first generator or Reference Application needs them.
+
+
+## Dependency topology
+
+The preferred application-UI dependency path is:
+
+```text
+nict-editing-studio-app
+        -> textus-flutter-application-framework
+        -> textus-flutter-core
+```
+
+TFAF depends on Core for lower-level runtime/device capabilities. Applications consume TFAF for standard application UI behavior.
+
+This is a preferred path, not a prohibition on all direct Core use. An application may depend directly on `textus-flutter-core` when it uses a Core-level capability whose semantics do not belong to TFAF, such as Capture/runtime facilities.
+
+Therefore the practical topology may be:
+
+```text
+nict-editing-studio-app -----> TFAF -----> Core
+          \-----------------------------> Core
+                    (explicit Core capabilities)
+```
+
+Rules:
+
+- standard application UI must use TFAF rather than bypassing it;
+- direct Core use must correspond to an explicit Core-level capability, not convenience;
+- TFAF must not wrap/re-export every Core API merely to force a strict dependency chain;
+- Core remains independent of TFAF and applications.
