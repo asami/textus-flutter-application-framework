@@ -81,7 +81,9 @@ layouts keep sequential List/Detail navigation without exposing mode controls;
 split-capable layouts default to List | Detail and permit explicit detail focus
 and restoration. `ResourceListDetailDisplayModel` supplies the shared
 presentation-session state; `allowDetailFocus` controls the optional capability
-in JSON configuration. Physical-device transition acceptance remains separate.
+in JSON configuration. Physical vertical Fold transitions have been accepted;
+the bounded observations and automated coverage are recorded in the
+[Phase 1 checklist](docs/phase/phase-1-checklist.md).
 
 An independent `ResourceListDetailHingePolicy` controls separator treatment:
 `avoid` uses continuous panes around either separator axis, while `span` uses
@@ -113,9 +115,10 @@ content, including an explicitly avoided zero-thickness fold. `span` instead
 requires two minimum-width panes across the safe body and uses ordinary
 left/right composition; it deliberately permits crossing a physical gap.
 The optional
-`minimumFoldPaneHeight` defaults to 180 logical pixels for old JSON. Physical-device
-acceptance, broader configuration coverage, and formal Phase 1
-acceptance remain open.
+`minimumFoldPaneHeight` defaults to 180 logical pixels for old JSON.
+Phase 1 is closed for the configuration-driven fake-resource reference path.
+Horizontal hinge geometry has automated coverage; physical horizontal posture
+acceptance and broader configuration coverage are not claimed.
 
 `ApplicationNavigationConfiguration` is the serializable UI model for an
 ordered set of bottom-navigation destinations. `ApplicationNavigationShell`
@@ -140,7 +143,7 @@ Configuration cannot grant command authority or bypass Aggregate validation.
 The [configuration and Cozy handoff contract](docs/notes/configuration-cozy-handoff.md)
 documents the implemented Resource, navigation, action, adaptive, and realization
 schemas and the remaining typed application binding boundary. It is a compiler
-target specification, not a completed Cozy generator or Phase acceptance.
+target specification, not a completed Cozy generator.
 
 `ApplicationViewModel` is the application-session view space: it owns named,
 observable semantic Views independently of routes and Widgets. Reusable
@@ -154,3 +157,6 @@ the application must supply an authorized server client when one exists.
 
 For local development, keep this repository and `textus-flutter-core` as sibling
 directories, then run `flutter pub get`, `flutter analyze`, and `flutter test`.
+The repository-owned `scripts/validate-full.sh` runs analysis and the full test
+suite. See the [Phase index](docs/phase/README.md): Phase 1 is closed and
+Phase 2 (common Settings) remains planned.

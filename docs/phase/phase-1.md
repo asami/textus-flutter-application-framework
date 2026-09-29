@@ -1,10 +1,27 @@
 # Phase 1 - Configuration-driven UI Reference Path
 
-status=in_progress
+status=closed
+
+closed_at=2026-09-29
+
+closure_mode=normal
 
 planned_at=2026-09-27
 
 reference_application=KnowledgeHubProject/nict-editing-studio-app
+
+## Closure
+
+The nine acceptance criteria are satisfied. See the
+[acceptance checklist](phase-1-checklist.md) and
+[closure record](../journal/2026/09/2026-09-29-phase-1-closure.md) for the
+implementation, independent review, automated verification, and bounded
+physical-device evidence. The implementation-progress paragraphs below retain
+their historical milestone scope; statements about then-open acceptance are
+not the current Phase status.
+
+Phase 2 remains planned, not started. This is an ordinary closure, with no
+acceptance waiver or forced-release exception.
 
 ## Goal
 
