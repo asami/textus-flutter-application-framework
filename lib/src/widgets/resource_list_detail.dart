@@ -560,6 +560,18 @@ class _ResourceDetail extends StatelessWidget {
   final ResourceListDetailConfiguration configuration;
   final ResourceViewModel viewModel;
 
+  List<ResourceAction> _visibleActions() {
+    final available = viewModel.selectedActions;
+    final configured = configuration.detailActions;
+    if (configured == null) return available;
+    final availableIds = available.map((action) => action.id).toSet();
+    return [
+      for (final action in configured)
+        if (availableIds.contains(action.id))
+          ResourceAction(id: action.id, label: action.label),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     if (viewModel.detailFailed) {
@@ -579,7 +591,7 @@ class _ResourceDetail extends StatelessWidget {
           ),
         if (viewModel.actionFailed)
           const ListTile(title: Text('Could not update resource')),
-        for (final action in viewModel.selectedActions)
+        for (final action in _visibleActions())
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: FilledButton(

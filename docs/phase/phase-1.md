@@ -16,7 +16,7 @@ An initial implementation now provides serializable List/Detail configuration,
 an asynchronous ResourceDataSource boundary, and width-based compact/expanded
 standard presentation exercised by the NICT app with fake data. Core now
 interprets vertical/horizontal fold/hinge geometry for the adaptive pane layout. Physical
-foldable acceptance, the broader configuration/action contract, independent
+foldable acceptance, broader configuration coverage, independent
 review, and Phase acceptance remain open.
 
 The application now also exercises a serializable TFAF bottom-navigation model
@@ -31,6 +31,25 @@ handler to application-owned commands. The fake Candidate path demonstrates an
 aggregate-validated review transition and projection refresh without placing
 mutation logic in the Widget or View Model. Production Workbench Operations and
 full CRUD/lifecycle semantics remain future contract work.
+
+The 2026-09-29 configuration-action successor adds serializable `detailActions`
+with ordered semantic IDs and presentation labels. Absent/null retains legacy
+handler-driven presentation; an empty list hides actions. The standard detail
+Widget intersects configuration with runtime availability and still dispatches
+through Views to application Aggregate commands. The reference Candidate JSON
+declares its review intent while Collecting explicitly declares no detail actions.
+The [configuration/Cozy handoff](../notes/configuration-cozy-handoff.md) documents
+the implemented schemas, compiler mapping, typed resource/view/page bindings,
+compatibility, and realization escape boundary. JSON registry loading, broader
+action surfaces, full Cozy generation, physical posture acceptance, and
+independent Phase acceptance are not claimed by this successor.
+Final successor verification passed all 73 TFAF and 39 reference-app Flutter
+tests. TFAF analysis is clean; the app retains only its two preexisting
+nonfatal Book Capture infos. Fourteen new framework cases include executable
+Cozy documentation examples and action availability/serialization; five new
+app cases cover actual JSON-to-Aggregate execution at compact/split widths
+and configuration asset/bundle replacement. Fresh parent source review found
+no current slice blocker; it is not independent full Phase acceptance.
 
 ## Architectural constraints
 

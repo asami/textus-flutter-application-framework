@@ -114,7 +114,7 @@ requires two minimum-width panes across the safe body and uses ordinary
 left/right composition; it deliberately permits crossing a physical gap.
 The optional
 `minimumFoldPaneHeight` defaults to 180 logical pixels for old JSON. Physical-device
-acceptance, action bindings, broader configuration coverage, and formal Phase 1
+acceptance, broader configuration coverage, and formal Phase 1
 acceptance remain open.
 
 `ApplicationNavigationConfiguration` is the serializable UI model for an
@@ -131,6 +131,16 @@ projection; an optional action handler translates view intents into
 application-owned aggregate commands. The reference app proves this with a
 fake Candidate aggregate and a review-request transition. No server Candidate
 Operation is implied by that fake implementation.
+
+Optional `detailActions` now declares an ordered detail-action allowlist and
+presentation labels. The standard Widget intersects it with handler availability
+and dispatches semantic IDs through the same View/command boundary. Absent/null
+preserves legacy handler-driven presentation; `[]` explicitly hides buttons.
+Configuration cannot grant command authority or bypass Aggregate validation.
+The [configuration and Cozy handoff contract](docs/notes/configuration-cozy-handoff.md)
+documents the implemented Resource, navigation, action, adaptive, and realization
+schemas and the remaining typed application binding boundary. It is a compiler
+target specification, not a completed Cozy generator or Phase acceptance.
 
 `ApplicationViewModel` is the application-session view space: it owns named,
 observable semantic Views independently of routes and Widgets. Reusable

@@ -17,6 +17,28 @@ class ResourceFieldConfiguration {
   Map<String, dynamic> toJson() => {'key': key, 'label': label};
 }
 
+/// Presentation of a semantic action, not permission to execute it.
+class ResourceActionConfiguration {
+  const ResourceActionConfiguration({required this.id, required this.label});
+
+  final String id;
+  final String label;
+
+  factory ResourceActionConfiguration.fromJson(Map<String, dynamic> json) {
+    final id = json['id'];
+    final label = json['label'];
+    if (id is! String ||
+        id.trim().isEmpty ||
+        label is! String ||
+        label.trim().isEmpty) {
+      throw const FormatException('Action id and label are required');
+    }
+    return ResourceActionConfiguration(id: id, label: label);
+  }
+
+  Map<String, dynamic> toJson() => {'id': id, 'label': label};
+}
+
 /// Serializable semantics for a standard Resource List + Detail presentation.
 class ResourceListDetailConfiguration {
   const ResourceListDetailConfiguration({
@@ -25,6 +47,7 @@ class ResourceListDetailConfiguration {
     required this.primaryField,
     required this.detailFields,
     this.secondaryField,
+    this.detailActions,
     this.compactBreakpoint = 700,
     this.minimumFoldPaneWidth = 280,
     this.minimumFoldPaneHeight = 180,
@@ -39,6 +62,12 @@ class ResourceListDetailConfiguration {
   final String primaryField;
   final String? secondaryField;
   final List<ResourceFieldConfiguration> detailFields;
+
+  /// Ordered presentation allowlist, intersected with runtime availability.
+  ///
+  /// Null preserves legacy handler-provided actions and labels. An empty list
+  /// explicitly hides all detail actions without changing command authority.
+  final List<ResourceActionConfiguration>? detailActions;
   final double compactBreakpoint;
   final double minimumFoldPaneWidth;
   final double minimumFoldPaneHeight;
@@ -74,6 +103,7 @@ class ResourceListDetailConfiguration {
           ),
         ),
       ),
+      detailActions: _decodeDetailActions(json['detailActions']),
       compactBreakpoint: breakpoint,
       minimumFoldPaneWidth: minimumFoldPaneWidth,
       minimumFoldPaneHeight: minimumFoldPaneHeight,
@@ -94,6 +124,8 @@ class ResourceListDetailConfiguration {
     'primaryField': primaryField,
     if (secondaryField != null) 'secondaryField': secondaryField,
     'detailFields': detailFields.map((field) => field.toJson()).toList(),
+    if (detailActions != null)
+      'detailActions': detailActions!.map((action) => action.toJson()).toList(),
     'compactBreakpoint': compactBreakpoint,
     'minimumFoldPaneWidth': minimumFoldPaneWidth,
     'minimumFoldPaneHeight': minimumFoldPaneHeight,
@@ -104,4 +136,26 @@ class ResourceListDetailConfiguration {
   };
 
   static bool _isFinitePositive(double value) => value.isFinite && value > 0;
+
+  static List<ResourceActionConfiguration>? _decodeDetailActions(
+    dynamic value,
+  ) {
+    if (value == null) return null;
+    if (value is! List) {
+      throw const FormatException('Detail actions must be a list');
+    }
+    final actions = <ResourceActionConfiguration>[];
+    final ids = <String>{};
+    for (final entry in value) {
+      if (entry is! Map<String, dynamic>) {
+        throw const FormatException('Detail actions must be objects');
+      }
+      final action = ResourceActionConfiguration.fromJson(entry);
+      if (!ids.add(action.id)) {
+        throw FormatException('Duplicate detail action id: ${action.id}');
+      }
+      actions.add(action);
+    }
+    return List.unmodifiable(actions);
+  }
 }
