@@ -252,4 +252,32 @@ Font/Text preference must preserve system accessibility behavior. TFAF may apply
 
 Applications can contribute their own Settings groups/items without modifying the common Settings shell or TFAF internals. Common settings remain framework-owned; domain-specific settings remain application-owned.
 
+### Platform-adaptive Settings realization
+
+The Settings model is platform-neutral. Android and iOS may use different presentation conventions without creating different application settings models.
+
+Conceptually:
+
+```text
+Logical Settings / Settings Registry
+              |
+              v
+       TFAF Settings shell
+          /          \
+ Android realization  iOS realization
+ Material conventions native/Cupertino conventions
+```
+
+The renderer may vary section styling, row/navigation affordances, selection controls, spacing, and other platform presentation details. Semantic setting identity, type, default, validation, persistence, and application extension contracts remain shared.
+
+Setting visibility/availability is capability-driven. For example, a Fold behavior setting is useful only when the current environment exposes a relevant foldable/adaptive capability. TFAF should support an explicit availability condition derived from `DeviceEnvironment` / platform capabilities rather than forcing every registered setting onto every device.
+
+This yields three separate concerns:
+
+- **Settings Model** — platform-neutral preference semantics.
+- **DeviceEnvironment / Capability** — runtime facts supplied by Core.
+- **Settings Visual Realization** — platform-adaptive TFAF presentation.
+
+The same separation principle used for Resource List/Detail visual realization therefore also applies to Settings.
+
 See [Phase 2](../phase/phase-2.md) for the executable Fold/Font development phase.
