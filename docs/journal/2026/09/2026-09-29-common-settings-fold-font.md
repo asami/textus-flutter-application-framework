@@ -15,4 +15,10 @@ Font/Text is also common framework behavior. The application preference must com
 
 NICT Editing Studio is the executable proof: its existing List/Detail path must react to Fold preference and its common UI must react to Font/Text preference. Both must persist across restart. Common Settings UI should require no Editing-Studio-specific Widgets.
 
+A further design decision is that Android and iOS differences belong to visual realization, not to the logical Settings model. Android can realize the shared model using Material-style Settings conventions while iOS can realize it using native/Cupertino-style grouped navigation and controls. The stored setting identity and semantics remain common.
+
+Settings are also capability-aware. A Fold preference should not be treated as universally meaningful merely because it exists in the registry. Its availability can depend on Core-provided device/environment capabilities. This gives TFAF a general `availability` concept for settings and avoids hard-coding device names or maintaining separate Android/iOS setting schemas.
+
+The resulting pipeline is: logical Settings -> capability filtering/effective policy -> platform-adaptive visual realization.
+
 See [Phase 2](../../phase/phase-2.md).
