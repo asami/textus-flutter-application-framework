@@ -23,6 +23,10 @@ Phase 2 turns settings from application-local preferences into reusable framewor
 5. Font/Text settings augment rather than erase system accessibility preferences.
 6. Applications may contribute application-specific settings through an explicit extension point.
 7. NICT Editing Studio is the development driver and must not introduce Editing-Studio-specific concepts into TFAF.
+8. The Settings model is platform-neutral; Android/iOS conventions are visual realization concerns.
+9. The standard Settings shell is platform-adaptive: Android should follow the platform's Material conventions and iOS should follow the platform's native/Cupertino conventions where practical.
+10. Setting availability is capability-driven. A setting that is meaningless on the current device/environment may be hidden or otherwise made unavailable according to an explicit availability policy.
+11. Platform-specific rendering must not fork the semantic setting identity, stored value, validation, or application extension contract.
 
 ## Scope
 
