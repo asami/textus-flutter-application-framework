@@ -248,3 +248,67 @@ The intended semantic mapping is:
 - Workflow / Continuation -> workflow/human-interaction presentation
 
 Transport/client generation belongs below this semantic boundary. Cozy/CML/CNCF integration may generate typed clients and bindings, but TFAF configuration should refer to operation/resource semantics rather than hand-coded HTTP calls.
+
+
+## Common Settings architecture
+
+TFAF owns reusable application-level Settings behavior. The framework provides four cooperating pieces:
+
+1. a common Settings model/registry;
+2. a persistence abstraction;
+3. a standard Settings UI shell;
+4. an extension point for application-specific settings.
+
+The first common settings are Fold behavior and Font/Text presentation. NICT Editing Studio is the development driver.
+
+Settings must remain distinct from runtime environment observations:
+
+```text
+persisted user/application preference       runtime environment
+-------------------------------------       -------------------
+font/text preference                        system text scale
+fold/adaptive preference                    window/display regions
+application-specific preference             hinge/display features
+                                            fold posture
+                                            platform capabilities
+                 \                         /
+                  +--> TFAF effective presentation
+```
+
+Low-level environment observations belong to `textus-flutter-core`. TFAF owns the application-level policy that combines them with settings.
+
+Fold behavior is an adaptive presentation preference, not a device-specific switch. The initial policy vocabulary is `automatic | preferSinglePane | preferDualPane`; `automatic` uses Core environment primitives.
+
+Font/Text preference must preserve system accessibility behavior. TFAF may apply an application preference on top of the system text scale, but must not silently replace or neutralize the system preference.
+
+Applications can contribute their own Settings groups/items without modifying the common Settings shell or TFAF internals. Common settings remain framework-owned; domain-specific settings remain application-owned.
+
+### Platform-adaptive Settings realization
+
+The Settings model is platform-neutral. Android and iOS may use different presentation conventions without creating different application settings models.
+
+Conceptually:
+
+```text
+Logical Settings / Settings Registry
+              |
+              v
+       TFAF Settings shell
+          /          \
+ Android realization  iOS realization
+ Material conventions native/Cupertino conventions
+```
+
+The renderer may vary section styling, row/navigation affordances, selection controls, spacing, and other platform presentation details. Semantic setting identity, type, default, validation, persistence, and application extension contracts remain shared.
+
+Setting visibility/availability is capability-driven. For example, a Fold behavior setting is useful only when the current environment exposes a relevant foldable/adaptive capability. TFAF should support an explicit availability condition derived from `DeviceEnvironment` / platform capabilities rather than forcing every registered setting onto every device.
+
+This yields three separate concerns:
+
+- **Settings Model** — platform-neutral preference semantics.
+- **DeviceEnvironment / Capability** — runtime facts supplied by Core.
+- **Settings Visual Realization** — platform-adaptive TFAF presentation.
+
+The same separation principle used for Resource List/Detail visual realization therefore also applies to Settings.
+
+See [Phase 2](../phase/phase-2.md) for the executable Fold/Font development phase.
