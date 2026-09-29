@@ -71,6 +71,37 @@ The runtime can then realize the same semantics as:
 - expanded: List | Detail
 - foldable: List | Detail arranged around display features/hinge where appropriate
 
+### Shared adaptive List/Detail display model
+
+TFAF distinguishes selected-resource View state, usable-region layout
+capability, and an explicit presentation preference. Split-capable layouts
+default to List on the left and Detail on the right (or above/below around a
+horizontal separator), with an optional
+detail-focus/restore-split interaction. Compact layouts expose only sequential
+List -> Detail navigation and hide those mode controls. Opening compact Detail
+is not an explicit detail-focus choice: gaining enough space reveals the list
+and the same selected detail by default.
+
+This is a reusable presentation model for Fold, tablet, desktop, and window
+size changes, not a device-posture branch or a Resource/Aggregate mutation.
+See the [adaptive List/Detail display specification](adaptive-list-detail-display-model.md)
+for the public display-model contract, state transitions, ownership, and
+acceptance evidence.
+
+Core supplies full-view display rectangles and gaps; TFAF clips them to its
+measured safe body after chrome/ancestor layout. Pane eligibility uses both
+width and height. Positive physical gaps require continuous-region content
+under the automatic default, including compact screens and focused Detail.
+`ResourceListDetailHingePolicy` is an independent presentation-session policy:
+`avoid` uses continuous regions even for a zero-thickness crease; `span` uses
+ordinary left/right composition or full-body focused/compact content. The
+automatic default spans non-occluding folds, while explicit user preference
+wins through resize and rotation. The common menu checks the effective policy,
+disables nonviable options, and warns about content hidden by a positive gap
+when spanning. It is absent without an intersecting separator or any viable
+two-pane policy, independent of focus/restore visibility. These are presentation
+policies, not additional domain Views or device-specific application offsets.
+
 ## Generation policy
 
 Each presentation unit has a generation/realization policy:

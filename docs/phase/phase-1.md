@@ -1,6 +1,6 @@
 # Phase 1 - Configuration-driven UI Reference Path
 
-status=planned
+status=in_progress
 
 planned_at=2026-09-27
 
@@ -11,6 +11,26 @@ reference_application=KnowledgeHubProject/nict-editing-studio-app
 Establish the first executable vertical path from declarative application UI configuration to a Flutter application, using the NICT Editing Studio as the Reference Application.
 
 Phase 1 must prove that standard Editing Studio UI can be implemented primarily by framework configuration and reusable runtime components, including an initial adaptive/foldable presentation path.
+
+An initial implementation now provides serializable List/Detail configuration,
+an asynchronous ResourceDataSource boundary, and width-based compact/expanded
+standard presentation exercised by the NICT app with fake data. Core now
+interprets vertical/horizontal fold/hinge geometry for the adaptive pane layout. Physical
+foldable acceptance, the broader configuration/action contract, independent
+review, and Phase acceptance remain open.
+
+The application now also exercises a serializable TFAF bottom-navigation model
+and framework-owned tab shell. Editing Studio supplies three destination
+bindings; TFAF owns selection and visited-page state. JSON decoding is
+available in the framework contract, though the reference app currently builds
+the typed navigation configuration synchronously at its composition boundary.
+
+The Resource List/Detail Widget now consumes a runtime `ResourceViewModel`.
+Queries populate its read projection; view actions dispatch through a separate
+handler to application-owned commands. The fake Candidate path demonstrates an
+aggregate-validated review transition and projection refresh without placing
+mutation logic in the Widget or View Model. Production Workbench Operations and
+full CRUD/lifecycle semantics remain future contract work.
 
 ## Architectural constraints
 
@@ -75,6 +95,43 @@ Demonstrate the same List + Detail semantics as:
 
 The framework consumes device/display-feature primitives from `textus-flutter-core`.
 
+The agreed [adaptive List/Detail display model](../notes/adaptive-list-detail-display-model.md)
+also requires a shared split/detail-focused presentation contract. Eligibility
+depends on usable display regions, not Fold posture. Compact navigation does
+not expose mode controls or implicitly request detail focus; growing a compact
+detail screen must show List | Detail with the same selection by default.
+Explicit detail focus and restore-split actions are available only when split
+presentation is viable. `ResourceListDetailDisplayModel` now supplies the shared
+presentation-session state, and Editing Studio provides a separate instance for
+each resource tab. The framework reconciles size changes within one adaptive
+Scaffold rather than leaving a compact detail route over the expanded layout.
+Focused executable verification and physical-device transition acceptance are
+tracked separately; this implementation does not close Phase 1.
+
+The initial 2026-09-29 focused verification passed 34 framework tests and 22
+reference app tests for width changes and the original vertical-region primitive.
+The successor horizontal-region slice adds Core rectangles/gaps, actual body
+viewport clipping, height-aware stacked panes, and continuous-region compact
+fallback. Its focused verification is recorded separately in the display-model
+note; physical fold/unfold visual acceptance remains pending. Multiple/partial
+feature partitioning and chrome relocation are not claimed by this slice.
+The successor final Flutter test runs passed Core 25, TFAF 47, and reference
+app 31 tests; Core/TFAF analysis was clean. The app retained its two existing
+nonfatal Book Capture deprecation infos. Phase 1 remains in progress.
+
+The selectable-policy successor separates hinge avoidance/spanning from detail
+focus. Configuration adds compatible `defaultHingePolicy=automatic` and
+`allowHingePolicySwitch=true` defaults; the common menu selects `avoid` or
+`span` when viable. Automatic avoids physical gaps and spans non-occluding
+folds. Explicit policy survives resizing, rotation, and focus/restore, including
+avoiding a zero-thickness crease or deliberately spanning a positive gap with
+an occlusion warning. Each reference-app resource tab keeps its own preference.
+This remains TFAF-05 work, not a new app Phase 2 or Phase 1 acceptance claim.
+Final selectable-policy full Flutter runs passed Core 25, TFAF 59, and reference
+app 34 tests; Core/TFAF analysis is clean and the app retains only its two
+existing nonfatal Book Capture infos. Fresh parent source review completed;
+physical-device posture acceptance and independent Phase acceptance remain open.
+
 ### TFAF-06 Editing Studio Reference Application
 
 Integrate with `nict-editing-studio-app` and demonstrate a Candidate/resource List + Detail path.
@@ -119,6 +176,7 @@ Phase 1 is complete when:
 - Resource List and Resource Detail work from declarative configuration.
 - realization policy is represented in the configuration/model contract.
 - one List + Detail scenario adapts between compact and expanded/foldable presentation using the same semantic configuration.
+- selecting a detail while compact and then gaining sufficient space realizes List | Detail with the same selection; explicit detail focus/restore works in split-capable layout and its controls stay absent while compact.
 - `nict-editing-studio-app` exercises this path as the Reference Application.
 - the boundary with `textus-flutter-core` is documented and respected.
 - the TFAF configuration contract is documented sufficiently for Cozy to target it.

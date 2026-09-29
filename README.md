@@ -75,6 +75,23 @@ The initial target is not merely to hand-build a foldable Editing Studio applica
 
 See [Phase 1](docs/phase/phase-1.md) and the [initial architecture journal](docs/journal/2026/09/2026-09-27-configuration-driven-ui-framework.md).
 
+The [adaptive List/Detail display specification](docs/notes/adaptive-list-detail-display-model.md)
+defines a shared, usable-region-driven split/detail-focus model. Compact
+layouts keep sequential List/Detail navigation without exposing mode controls;
+split-capable layouts default to List | Detail and permit explicit detail focus
+and restoration. `ResourceListDetailDisplayModel` supplies the shared
+presentation-session state; `allowDetailFocus` controls the optional capability
+in JSON configuration. Physical-device transition acceptance remains separate.
+
+An independent `ResourceListDetailHingePolicy` controls separator treatment:
+`avoid` uses continuous panes around either separator axis, while `span` uses
+ordinary left/right panes and full-body focused content. `defaultHingePolicy`
+defaults to `automatic` (avoid physical gaps, span zero-thickness folds), and
+`allowHingePolicySwitch` defaults to `true`. The common AppBar menu offers viable
+avoid/span choices; explicit session preference survives compact sizing and
+orientation without changing detail focus or semantic selection. Spanning a
+physical gap carries a content-occlusion warning.
+
 ## Development status
 
 The initial Flutter package foundation is in place. Its public entry point is
@@ -83,9 +100,47 @@ and it depends on the sibling `textus-flutter-core` package. The first public
 configuration value is `PresentationRealization`, which supports stable JSON
 names for `framework`, `generated`, `hybrid`, and `custom`.
 
-The Resource List/Detail runtime and adaptive pane behavior in Phase 1 are not
-implemented yet. The NICT Editing Studio app currently exercises the package
-dependency and import path, not those UI capabilities.
+An initial `ResourceDataSource` contract, serializable List/Detail
+configuration, and standard Resource List/Detail Widget now run in the NICT
+Editing Studio app with two distinct fake resource bindings and configurations:
+collecting resources and Knowledge Candidates. The same selection is realized
+as compact navigation or an expanded detail pane according to the configured width
+breakpoint. Core's `SeparatedDisplayRegions` additionally supports vertical
+left/right and horizontal upper/lower fold/hinge regions. Both clipped body
+panes must meet the configured minimum width and height under `avoid`; that
+policy excludes the separator from split, focused, and compact single-region
+content, including an explicitly avoided zero-thickness fold. `span` instead
+requires two minimum-width panes across the safe body and uses ordinary
+left/right composition; it deliberately permits crossing a physical gap.
+The optional
+`minimumFoldPaneHeight` defaults to 180 logical pixels for old JSON. Physical-device
+acceptance, action bindings, broader configuration coverage, and formal Phase 1
+acceptance remain open.
+
+`ApplicationNavigationConfiguration` is the serializable UI model for an
+ordered set of bottom-navigation destinations. `ApplicationNavigationShell`
+owns tab selection and preserves visited page state; applications supply the
+destination labels, symbols, and page bindings. The reference app currently
+constructs this typed model in its application composition, while its Resource
+List/Detail presentations remain JSON-configured.
+
+`ResourceListDetail` now consumes a `ResourceViewModel` rather than querying an
+application data source directly. Its collection and detail Views own loading,
+selection, safe error state, and action dispatch. Their read sources supply a
+projection; an optional action handler translates view intents into
+application-owned aggregate commands. The reference app proves this with a
+fake Candidate aggregate and a review-request transition. No server Candidate
+Operation is implied by that fake implementation.
+
+`ApplicationViewModel` is the application-session view space: it owns named,
+observable semantic Views independently of routes and Widgets. Reusable
+`ResourceCollectionView` and `ResourceDetailView` are its first concrete View
+types. `ResourceViewModel` remains a List/Detail presentation adapter so existing
+Widgets can consume either standalone or application-owned Views.
+`CrudResourceAdapter` can project an application-supplied CRUD client into the
+same read contract while retaining typed create/update/delete inputs and
+expected revisions. It defines no HTTP paths or Aggregate business rules;
+the application must supply an authorized server client when one exists.
 
 For local development, keep this repository and `textus-flutter-core` as sibling
 directories, then run `flutter pub get`, `flutter analyze`, and `flutter test`.
