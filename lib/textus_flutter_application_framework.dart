@@ -15,6 +15,8 @@ export 'src/settings/common_settings.dart';
 export 'src/settings/settings_snapshot.dart';
 export 'src/settings/settings_service.dart';
 export 'src/settings/settings_storage.dart';
+export 'src/settings/settings_record.dart';
+export 'src/settings/settings_controller.dart';
 export 'src/view/application_view_model.dart';
 export 'src/view/settings_view.dart';
 export 'src/view/resource_list_detail_display_model.dart';

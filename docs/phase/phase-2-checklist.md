@@ -27,13 +27,25 @@ PHASE-2.1; S01 does not establish Phase closure or runtime acceptance.
 
 ## TFAF-S02 - Persistence lifecycle
 
-- Current status: OPEN
-- [ ] Inject the abstract local-installation/browser-origin storage boundary.
-- [ ] Prove late-load/retry protection for edited/reset fields and immediate session edits.
-- [ ] Prove serialized/coalesced revision-aware saves, latest-value durability and failure/retry.
-- [ ] Prove invalid/missing fallback, unknown-key retention and protected future versions.
-- [ ] Prove reset preserves extension data and restart reflects acknowledged/failed save outcomes.
-- [ ] Record focused validation, independent Step acceptance review and commit.
+- Current status: ACCEPTED
+- [x] Inject the abstract local-installation/browser-origin storage boundary.
+- [x] Prove late-load/retry protection for edited/reset fields and immediate session edits.
+- [x] Prove serialized/coalesced revision-aware saves, latest-value durability and failure/retry.
+- [x] Prove invalid/missing fallback, unknown-key retention and protected future versions.
+- [x] Prove reset preserves extension data and restart reflects acknowledged/failed save outcomes.
+- [x] Record focused validation, independent Step acceptance review and commit.
+
+Acceptance basis (2026-10-01): 10 versioned-record and 40 concrete-controller
+behavior cases passed, together with 31 registry/Settings View/ApplicationViewModel
+consumer cases. Focused analysis, format and diff checks passed. Independent
+protected-focused review accepted the frozen R1-R4, C1-C6 and W1-W6 contracts
+with no blockers, Hygiene or Development Candidates.
+The acceptance commit is the commit introducing this record, titled
+`Preserve settings through revision-aware persistence and explicit retry`.
+Storage remains injected and caller-owned: concrete platform adapters and
+runtime assurance are not accepted by S02. Material/Cupertino shell interaction
+remains S03. Repository-full validation is deliberately deferred to PHASE-2.1;
+S02 does not establish Phase closure.
 
 ## TFAF-S03 - Material/Cupertino Settings shell
 

@@ -121,7 +121,8 @@ corresponding session overrides without touching resource selection.
 state transitions, persistence and intent sequence. Getters expose immutable
 state. Invalid edits throw `ArgumentError`. Calls after disposal throw
 `StateError`, disposal is idempotent, and async continuations must suppress
-post-disposal state changes/notifications. The concrete controller is S02.
+post-disposal state changes/notifications. `SettingsController` supplies the
+concrete S02 lifecycle through this unchanged service boundary.
 
 `SettingsView extends ChangeNotifier implements ApplicationView` attaches exactly
 one service listener and delegates registry/snapshot/typed reading, availability,
@@ -153,16 +154,18 @@ Settings notifications must not recreate resource views, replace selection,
 issue domain commands or serialize resource/session state. These integration
 boundaries are exercised with the unchanged resource views in View tests.
 
-## Storage and S02 record/lifecycle obligations
+## Storage, retained records and explicit controller composition
 
 `SettingsStorage` is the injected local-installation/browser-origin boundary:
 `Future<String?> read()` and `Future<void> write(String record)`. Null means
 absence. Write completion means acknowledged durable whole-record replacement;
 failure means not acknowledged. Adapters must not report success early. The
 framework serializes writes; no CAS/server-profile requirement is introduced.
-S01 supplies no real adapter, storage package or concrete codec/controller.
+S01 defines the service/storage boundary. S02 adds `SettingsRecord` and
+`SettingsController`; applications still supply their own adapter, without a
+framework dependency on a storage package or platform persistence implementation.
 
-S02 must implement this versioned JSON envelope:
+`SettingsRecord` retains this versioned JSON envelope:
 
 ```json
 {
@@ -175,28 +178,124 @@ S02 must implement this versioned JSON envelope:
 }
 ```
 
-Missing known values inherit defaults and are not explicit. Invalid known values
-use their per-setting default and are not explicit. Valid explicit defaults
-remain explicit. Ordinary writes preserve uninterpreted unknown setting values
-and unknown top-level JSON fields. Registered extension data follows its own
-typed schema; common reset preserves application and unknown extension data.
+The codec is independent of registry, Widgets and storage. `empty()` supplies
+version 1 and empty values/extras. `decode(String)` requires an object with an
+integer `version` and object `values`; malformed JSON or required shapes throw
+`FormatException`. `values` and `extraFields` recursively copy and freeze maps
+and lists, including null and unknown nested data. `encode()` roundtrips semantic
+JSON, without promising whitespace or key order. `withUpdates(...)` replaces
+only named values and rejects non-JSON objects, nonfinite numbers, nonstring map
+keys and cyclic structures with `ArgumentError`.
 
-An unsupported integer `version != 1` is protected from automatic rewriting
-until explicit reset. Malformed JSON or envelope is a nonfatal read failure with
-explicit retry, not permission to overwrite unread data. Explicit reset writes
-explicit common defaults while preserving application/unknown extension data,
-including recovery from a future envelope.
+Every integer version other than 1, including zero/negative/future versions, is
+well-formed but unsupported. The codec retains its envelope and refuses ordinary
+updates with `StateError`; `withUpdates(..., resetVersion: true)` explicitly
+changes its version while preserving unrelated data.
 
-Before load completes, defaults/current edits are usable and loading is visible.
-Late load/retry restores only values not edited/reset since that read began. A
-valid edit applies immediately and remains unsaved until its revision is
-acknowledged. Writes must be serialized/coalesced so an older completion cannot
-mark newer intent saved or become the final stored value. Read failure retains
-defaults/current edits and requires explicit retry. Write failure retains session
-values and exposes unsaved/error state; retry saves the latest values. Restart
-restores the last acknowledged values rather than failed saves. Reset participates
-in the same revision/error rules and preserves extension data.
+Application composition injects storage and registers a concrete service-backed
+View. A custom registry must contain the actual three common definition instances:
 
-These record and lifecycle obligations await S02's concrete controller, queue/read
-merge algorithm and controllable-storage executable proof. S01 fake snapshots
-and service transitions make no claim that any record has actually been stored.
+```dart
+final registry = CommonSettings.registry(extensions: [flag]);
+final controller = SettingsController(
+  registry: registry,
+  storage: applicationStorage, // supplied and owned by application composition
+);
+final settings = SettingsView.owned(service: controller);
+await settings.load(); // explicit; neither constructor starts I/O
+```
+
+Missing/invalid known values inherit their per-definition defaults and are not
+explicit. Valid explicit defaults remain explicit, including numeric JSON `1`
+restored as the declared multiplier `1.0`. Valid siblings restore independently.
+The controller retains the raw envelope even for invalid registered fields:
+an unrelated edit does not canonicalize or erase them. Unknown value keys and
+top-level fields survive ordinary writes. Loading never writes defaults merely
+because they are effective values.
+
+## Read barriers, recovery and local intent
+
+Defaults and current edits are usable before load completes. Each valid edit,
+including the same value, applies synchronously, adds explicit/unsaved presence
+and creates a distinct revision/intent. `resetCommon()` creates one revision,
+makes all three common defaults explicit/unsaved, and preserves extension
+values, presence and pending edits.
+
+A read captures per-setting local revisions and IDs already unsaved at its start.
+It restores only fields that were not already unsaved and have had no local
+intent since that capture. This protects edits before the first load, during a
+load, after a failed read, before retry and during retry. Common reset protects
+every common field while allowing untouched registered extensions to restore.
+Restoration creates no user intent or revision.
+
+There is one read at a time. Overlapping `load()`/`retryLoad()` calls share its
+Future. `load()` only starts from `notLoaded`; it does not retry failures.
+`retryLoad()` starts from `notLoaded`, `failed` or an unsupported state whose
+writes remain blocked. Ready state and an authorized version-reset recovery do
+not reload. Read Futures complete normally after the resulting state is published
+and an eligible write pump is scheduled; they do not await persistence.
+
+Writes are blocked until a supported/null read establishes a baseline. Read I/O
+failure or malformed data exposes nonfatal `failed`/`readError` while preserving
+current values and unsaved intent. Edits, common reset and `retrySave()` cannot
+overwrite unread/failed storage; only explicit successful `retryLoad()` opens
+that barrier.
+
+An unsupported record is retained and reported as `unsupported` with a
+`StateError` identifying its version. Stored known values are not interpreted,
+and ordinary edits/save retry do not rewrite it. Explicit common reset, including
+a still-pending reset before/during its read, authorizes recovery. Recovery makes
+common defaults explicit, restores valid untouched registered extensions,
+preserves invalid/unknown extension raw data and top-level extras, merges local
+extension edits and submits version 1. Read state remains `unsupported` until
+that recovery write succeeds; failure preserves unsupported/unsaved/save-error
+state and requires `retrySave()`.
+
+## Serialized saves, acknowledgement and lifetime
+
+The permitted write pump starts in a microtask, coalescing synchronous edits
+before its first capture. Only one adapter write is active. Each capture overlays
+the latest unsaved values onto the retained acknowledged envelope and records
+their per-ID revisions and global revision. Edits during an active write remain
+immediate/dirty and coalesce into the next serialized capture.
+
+Success replaces the acknowledged baseline with that exact submitted record and
+sets `savedRevision` to its captured revision. An ID clears from `unsavedIds` only
+if its current local revision still matches the capture. Unchanged captured IDs
+can acknowledge independently of newer dirty IDs. A same-value edit or A/B/A
+sequence remains new intent even when its effective value equals the old record.
+`saving` lasts while writes are active/pending; `idle` means the pump drained.
+
+Write/encoding failure, including synchronous adapter throws, preserves effective
+session values, dirty IDs, the last acknowledged image and `savedRevision`.
+It publishes `failed`/`saveError` and stops the pump. Ordinary subsequent edits or
+resets retain that error and do not retry. Explicit `retrySave()` clears the save
+failure latch and queues all newest pending values when the read barrier permits;
+when blocked it starts no I/O and retains the read error. Calls during an existing
+scheduled/active pump share its Future, which completes normally after the pump
+drains or stops, including edits added while it runs. Completion alone does not
+guarantee durability: inspect the snapshot. Restart reads only the adapter's last
+acknowledged whole-record image, never failed in-session edits.
+
+Snapshots and queue/read/intent state are established before notifying observers,
+including reentrant edits, resets, retries and disposal. Controller disposal is
+immediate and idempotent, detaches listeners and prevents new I/O/notifications
+or continuation state changes. Disposal from notification dispatch defers the
+underlying notifier teardown until dispatch unwinds. New intent/load/retry or
+`addListener` calls then throw `StateError`; `removeListener` remains harmless,
+and registry/last snapshot stay readable for diagnostics.
+
+The interface cannot cancel an already active adapter operation: it may still
+acknowledge external storage. Its completion settles awaiting callers normally,
+catches late failure and never mutates/notifies a disposed controller or starts
+follow-up writes. The controller never disposes the externally owned storage
+adapter or calls a resource/domain operation. Owned/borrowed View semantics remain
+as defined above.
+
+The S02 record/controller suites use reusable test-only
+`ControllableSettingsStorage` with delayed read/write completion, durable images,
+failure and concurrency counts; no real adapter or runtime is involved. Their
+scenarios cover the record/lifecycle contract and concrete View consumers. S02
+focused validation and independent acceptance remain separate workflow gates;
+S03 shell controls and Phase 2.1 presentation/runtime integration remain deferred.
+S01 fake service tests alone make no persistence or durability claim.
