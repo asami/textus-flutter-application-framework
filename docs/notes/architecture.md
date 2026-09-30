@@ -312,3 +312,29 @@ This yields three separate concerns:
 The same separation principle used for Resource List/Detail visual realization therefore also applies to Settings.
 
 See [Phase 2](../phase/phase-2.md) for the executable Fold/Font development phase.
+
+
+## Display Mutation and standard interaction runtime
+
+TFAF treats the CNCF Display contract as more than read-only presentation data. A Display Object may carry standard mutation metadata sufficient to realize common resource interaction without application-owned screens or action plumbing.
+
+The standard framework path is configuration/runtime driven:
+
+```text
+List -> Create Editor -> DisplayService.create -> Detail
+Detail -> Edit -> Editor -> DisplayService.update -> Detail
+Detail -> Delete -> Confirmation -> DisplayService.delete -> List
+```
+
+TFAF owns the visual interaction pattern: action placement, Editor realization, local draft state, validation presentation, Save/Cancel/Delete confirmation, completion navigation, and platform-adaptive rendering. The Display protocol supplies target-neutral field/editability/constraint/mutation semantics.
+
+Standard Display Mutation is limited to resource-style create/update/delete. Business Operations such as purchase, approve, requestReview or publish are not routed through DisplayService. Applications/TFAF action bindings invoke those operations through the ordinary CNCF REST Operation client.
+
+For the initial consistency model, a successful Business Operation is followed by a client-initiated reload of the affected Display through the Display client. TFAF may later generalize this into a refresh policy; push invalidation/subscription is not required initially.
+
+This creates a deliberate split:
+
+- **Display actions/mutations**: generic Resource CRUD, configurable and framework-realized end to end.
+- **Business actions**: domain/application Operations, invoked directly through REST; presentation metadata may describe them, but execution remains the normal Operation interface.
+
+The goal is that standard List/Detail/Create/Edit/Delete UI requires configuration rather than handwritten application Widgets or action handlers. `generated/hybrid/custom` remain escape paths for interaction that cannot be represented by the standard Display contract.
