@@ -21,3 +21,18 @@ TFAF consumes locale-aware Display Models that preserve both semantic values and
 The normal path is to render the server-prepared display value. When smartphone/device settings require a different presentation, TFAF may use the semantic value through textus-flutter-core runtime support and apply device/user presentation context. This is presentation override, not reconstruction of domain semantics.
 
 Examples include date/time presentation, 12/24-hour conventions, number/currency/unit formatting, and other device-sensitive presentation. Application Widgets should not duplicate server I18N business rules.
+
+
+## Multi-platform realization principle
+
+TFAF development must treat Flutter smartphone UI as one realization target, not as the semantic center of Display Model design.
+
+Display Model + Action Protocol should be sufficient to derive different presentation surfaces:
+- smartphone: normal summary/detail/action UI,
+- Fold/tablet: List + Detail + Evidence and richer review,
+- Watch/Wear OS: compact summary + primary confirmation action,
+- Web/desktop: richer inspection and operation surfaces.
+
+Information role and priority should be preserved so constrained surfaces can select the most important content without parsing application-specific semantics.
+
+Pixel Watch / Wear OS Candidate-Admission is adopted as an early stress test for this separation. If the same AdmissionCandidate and Action semantics cannot be projected naturally to both Fold and Watch, the logical Display Model / Action boundary should be reconsidered rather than adding platform-specific meaning to the application model.
