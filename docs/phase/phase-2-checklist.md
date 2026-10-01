@@ -49,11 +49,23 @@ S02 does not establish Phase closure.
 
 ## TFAF-S03 - Material/Cupertino Settings shell
 
-- Current status: OPEN
-- [ ] Implement common Settings navigation and platform visual realizations with shared IDs and values.
-- [ ] Prove standard controls, synthetic capability availability and extension interaction.
-- [ ] Keep Widgets on the Settings View and use no Editing-Studio-specific common Widgets.
-- [ ] Record focused validation, independent Step acceptance review and commit.
+- Current status: ACCEPTED
+- [x] Implement common Settings navigation and platform visual realizations with shared IDs and values.
+- [x] Prove standard controls, synthetic capability availability and extension interaction.
+- [x] Keep Widgets on the Settings View and use no Editing-Studio-specific common Widgets.
+- [x] Record focused validation, independent Step acceptance review and commit.
+
+Acceptance basis (2026-10-01): 40 Material/Cupertino shell and 17 navigation
+behavior cases passed, together with 81 registry/View/record/controller and
+ApplicationViewModel accumulator cases. Focused analysis, format and diff checks
+passed. Independent protected-focused review accepted the complete six-path
+accumulator against U1-U10 with no blockers, Hygiene or Development Candidates.
+The acceptance commit is the commit introducing this record, titled
+`Provide shared Material and Cupertino settings screens and navigation`.
+Shells borrow the Settings View; restoration and ownership remain explicit.
+Concrete storage adapters, presentation effects and runtime assurance remain
+outside S03. Repository-full validation is deliberately deferred to PHASE-2.1;
+S03 does not establish Phase closure.
 
 ## Foundation closure and successor handoff
 

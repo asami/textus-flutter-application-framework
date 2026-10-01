@@ -23,3 +23,5 @@ export 'src/view/resource_list_detail_display_model.dart';
 export 'src/view/resource_list_detail_hinge_policy.dart';
 export 'src/widgets/application_navigation_shell.dart';
 export 'src/widgets/resource_list_detail.dart';
+export 'src/widgets/settings_shell.dart';
+export 'src/widgets/settings_navigation.dart';

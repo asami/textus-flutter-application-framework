@@ -5,7 +5,7 @@ observable service boundary and application-session `SettingsView`. Applications
 compose extension definitions, capabilities and an injected storage adapter.
 Widgets read and edit through the View; they do not access storage. These are
 the foundation contracts for [Phase 2](../phase/phase-2.md). Concrete persistence
-lifecycle proof belongs to S02, shared Material/Cupertino controls to S03, and
+lifecycle contract belongs to S02, shared Material/Cupertino controls to S03, and
 presentation effects/runtime integration to [Phase 2.1](../phase/phase-2.1.md).
 The fake-service tests prove observation and delegation, not storage durability.
 
@@ -297,5 +297,68 @@ The S02 record/controller suites use reusable test-only
 failure and concurrency counts; no real adapter or runtime is involved. Their
 scenarios cover the record/lifecycle contract and concrete View consumers. S02
 focused validation and independent acceptance remain separate workflow gates;
-S03 shell controls and Phase 2.1 presentation/runtime integration remain deferred.
+S03 shell controls are specified below; Phase 2.1 presentation/runtime integration
+remains deferred.
 S01 fake service tests alone make no persistence or durability claim.
+
+## Borrowed native Settings shell and navigation
+
+`SettingsShell(view: ..., capabilities: ..., presentation: ...)` observes the
+current View snapshot directly and renders registered groups and definitions in
+order. Empty/all-hidden groups are omitted. `SettingsPresentation.adaptive` uses
+`Theme.of(context).platform`: iOS selects Cupertino, other targets Material.
+Explicit `material`/`cupertino` overrides affect visuals only. Null capabilities
+mean an empty ephemeral set; direct callers update capabilities by rebuilding.
+No mount, rebuild or platform/capability update loads, edits or resets settings.
+
+```dart
+// Application composition owns the controller/View and explicit restoration.
+final settings = SettingsView.owned(
+  service: SettingsController(registry: registry, storage: applicationStorage),
+);
+await settings.load();
+// An application-owned Settings destination can render the borrowed View:
+final screen = SettingsShell(view: settings, capabilities: capabilities);
+// Or an action in an existing screen opens Settings on its nearest Navigator:
+await showSettings(context, view: settings, capabilities: capabilities);
+// Route completion means pop, not durable save. Inspect settings.snapshot.
+// Dispose the owner only after all observing shells/routes have detached.
+```
+
+`showSettings` pushes a matching `MaterialPageRoute<void>` or
+`CupertinoPageRoute<void>`, capturing its initial capabilities and resolved style.
+The route borrows the same View and does not load/dispose it or its service/storage.
+Pop/reopen preserves current values. Cupertino presentation also works inside a
+`CupertinoApp` without a Material ancestor. Every choice/reset modal uses the
+nearest Navigator and its own builder context to pop.
+
+Exactly two typed bool choices `{false, true}` render as a native switch regardless
+of catalog order/wire values. All other finite catalogs use a native labelled
+chooser showing the current choice. Selection forwards the stable registered ID
+and typed value; selecting the current value still creates one intent. Disabled
+controls remain visible with null callbacks and “Unavailable in this environment”;
+hidden controls are omitted. Capability updates preserve values and revisions.
+Cupertino switch rows do not toggle on row tap. Wrapped labels and descriptions
+retain OS text scaling; S03 does not apply the user text multiplier.
+
+Choice/reset completion captures the original View and ignores stale completion
+after replacement/unmount. Choices additionally require the same registered
+definition instance and current available capability. Cancel/back/dismiss creates
+no intent. Replacement detaches old observation; neither shell nor route owns
+View disposal. The owner must detach widgets before disposing Views.
+
+Read and save status are independent snapshot projections. Not-loaded, loading,
+read-failed and unsupported states never report saved defaults. Explicit Load,
+Retry loading and Retry saving actions delegate to the View. Unsaved IDs display
+“Unsaved changes”; “Changes saved” requires ready/idle and no unsaved IDs. Errors
+are readable messages without raw adapter details or Future-based success banners.
+Controls stay editable according to capabilities while the controller enforces its
+read barriers, coalescing, retry and acknowledgement rules.
+
+“Reset common settings” is always visible and opens a native confirmation:
+“Restore common defaults. Application settings are kept.” Confirmation creates
+exactly one common-reset intent, including already-default or loading states;
+Cancel creates none. Extension/unknown retained data and unsupported-version
+recovery remain controller-owned. Shell/navigation executable specifications use
+the unchanged controllable adapter; acceptance, Phase closure and runtime proof
+remain separate workflow gates.
