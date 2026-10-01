@@ -178,6 +178,7 @@ class _ResourceListDetailState extends State<ResourceListDetail> {
                   : null,
               actions: _actionsFor(
                 presentation,
+                splitCapable: splitCapable,
                 hingePolicy: hingePolicy,
                 avoidViable: avoidViable,
                 spanViable: spanViable,
@@ -213,6 +214,7 @@ class _ResourceListDetailState extends State<ResourceListDetail> {
 
   List<Widget> _actionsFor(
     ResourceListDetailPresentation presentation, {
+    required bool splitCapable,
     required ResourceListDetailHingePolicy hingePolicy,
     required bool avoidViable,
     required bool spanViable,
@@ -266,9 +268,8 @@ class _ResourceListDetailState extends State<ResourceListDetail> {
     final canFocus =
         widget.configuration.allowDetailFocus &&
         widget.viewModel.selectedResource != null;
-    if (!canFocus) return actions;
     actions.addAll(switch (presentation) {
-      ResourceListDetailPresentation.split => [
+      ResourceListDetailPresentation.split when canFocus => [
         IconButton(
           key: const Key('resource-detail-focus'),
           tooltip: 'Show detail full screen',
@@ -276,7 +277,8 @@ class _ResourceListDetailState extends State<ResourceListDetail> {
           onPressed: _displayModel.focusDetail,
         ),
       ],
-      ResourceListDetailPresentation.detailFocused => [
+      ResourceListDetailPresentation.detailFocused ||
+      ResourceListDetailPresentation.compactList when splitCapable => [
         IconButton(
           key: const Key('resource-restore-split'),
           tooltip: 'Show list and detail',
@@ -284,8 +286,15 @@ class _ResourceListDetailState extends State<ResourceListDetail> {
           onPressed: _displayModel.restoreSplit,
         ),
       ],
-      ResourceListDetailPresentation.compactList ||
-      ResourceListDetailPresentation.compactDetail => const [],
+      ResourceListDetailPresentation.compactDetail when splitCapable => [
+        IconButton(
+          key: const Key('resource-restore-split'),
+          tooltip: 'Show list and detail',
+          icon: const Icon(Icons.close_fullscreen),
+          onPressed: _displayModel.restoreSplit,
+        ),
+      ],
+      _ => const [],
     });
     return actions;
   }

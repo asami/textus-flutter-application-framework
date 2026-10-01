@@ -1,6 +1,7 @@
 # Phase 2.1 - Common Settings Fold, Font and Reference Driver
 
-status=planned
+status=active
+started_at=2026-10-01
 split_full_test_policy=final-only
 split_full_validation_method=local-driver-acceptance
 split_validation_bootstrap=none
@@ -22,7 +23,16 @@ to adaptive pane/hinge presentation and OS-aware text size, then prove the
 behavior through Editing Studio App Phase 3. This is the last resulting Phase
 and owns complete framework validation for `PHASE-2 -> PHASE-2.1`.
 
-Status remains planned. Start only after the predecessor's accepted closure.
+Current status: active under the explicit 2026-10-01 invocation after the
+predecessor's accepted closure; TFAF-S04 has passed focused validation and
+independent acceptance, with its exact Step commit as the remaining gate.
+
+Owner: TFAF; the parent owns validation, independent acceptance and commits.
+
+Update rule: change Step status only against focused validation, independent
+acceptance and its exact commit. S04 implementation and independent review are complete;
+S05/S06 and full Phase closure/runtime evidence remain pending.
+
 Consume its setting IDs/defaults, versioned record, View/service/storage and
 extension APIs, lifecycle rules, fixtures, platform-shell evidence and release
 identity. [Phase 2 architectural rules](phase-2.md#architectural-rules) and

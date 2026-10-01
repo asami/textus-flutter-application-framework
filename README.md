@@ -161,7 +161,13 @@ The repository-owned `scripts/validate-full.sh` runs analysis and the full test
 suite. See the [Phase index](docs/phase/README.md): Phase 1 is closed and
 Phase 2 (Settings model, persistence and platform shell) is closed with focused
 assurance and a comprehensive PASS review. Phase 2.1 (Fold/Font and
-reference-driver proof) remains planned/not-started. The serial split was
+reference-driver proof) is active from 2026-10-01, with S04 ready for commit. The
+[adaptive Settings consumer contract](docs/notes/settings-adaptive-presentation.md)
+defines the borrowed all-tab binding, pane/session precedence and retained hinge
+fallback. Focused validation (206 tests) and independent acceptance have passed;
+the exact S04 commit remains pending.
+S05 text scaling, S06 application/runtime proof and final full validation remain
+open. App integration is not yet complete. The serial split was
 recorded on 2026-10-01; complete framework validation is explicitly
 deferred-not-run and belongs to Phase 2.1. See the
 [Settings contract](docs/notes/application-settings.md) and

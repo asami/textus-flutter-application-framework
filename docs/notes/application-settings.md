@@ -9,6 +9,15 @@ lifecycle contract belongs to S02, shared Material/Cupertino controls to S03, an
 presentation effects/runtime integration to [Phase 2.1](../phase/phase-2.1.md).
 The fake-service tests prove observation and delegation, not storage durability.
 
+The additive [adaptive-presentation consumer](settings-adaptive-presentation.md)
+now supplies S04 pane/hinge effects through the existing Resource List/Detail
+display model and a borrowed binding over all resource tabs. Its implementation
+has passed focused validation and independent acceptance; its exact Step commit
+remains the final S04 acceptance gate.
+The accepted foundation catalog, storage/controller lifecycle and native shell
+semantics below remain unchanged. S05 OS-aware text composition and S06 real
+adapter/application/runtime proof are still pending.
+
 ## Catalog and finite typed choices
 
 The ordered groups are `appearance` (Appearance), `layout` (Layout),
@@ -23,8 +32,8 @@ The ordered groups are `appearance` (Appearance), `layout` (Layout),
 Choice labels are user-facing and independent of wire identities. Pane and hinge
 preferences are distinct global types. They do not serialize
 `ResourceListDetailDisplayModel`, resource selection or session overrides. The
-successor explicitly maps global hinge preference to the existing session policy
-and composes the text multiplier with OS accessibility scaling.
+S04 consumer explicitly maps global hinge preference to the existing session
+policy. S05 will compose the text multiplier with OS accessibility scaling.
 
 `SettingGroup`, `SettingChoice<T>` and `SettingDefinition<T extends Object>`
 contain final metadata and immutable copied catalogs. IDs, labels, group references

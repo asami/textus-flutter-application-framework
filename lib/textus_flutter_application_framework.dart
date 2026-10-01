@@ -20,6 +20,7 @@ export 'src/settings/settings_controller.dart';
 export 'src/view/application_view_model.dart';
 export 'src/view/settings_view.dart';
 export 'src/view/resource_list_detail_display_model.dart';
+export 'src/view/resource_list_detail_settings_binding.dart';
 export 'src/view/resource_list_detail_hinge_policy.dart';
 export 'src/widgets/application_navigation_shell.dart';
 export 'src/widgets/resource_list_detail.dart';
