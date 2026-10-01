@@ -1,18 +1,34 @@
-# Phase 2 - Common Settings Foundation: Fold and Font
+# Phase 2 - Common Settings Model, Persistence and Shell
 
-status=planned
-
+status=closed
+closed_at=2026-10-01
+closure_binding=PHASE-2
+repository_full_suite=deferred-not-run
+split_full_test_policy=final-only
+split_full_validation_method=local-driver-acceptance
+split_validation_bootstrap=none
+split_full_validation_driver=scripts/validate-full.sh
+validation_ownership=aggregate-deferred
+aggregate_validation_owner=PHASE-2.1
+aggregate_validation_sequence=["PHASE-2","PHASE-2.1"]
 planned_at=2026-09-29
-
-predecessor=[Phase 1](phase-1.md)
-
+predecessor=Phase 1
+successor=PHASE-2.1
 reference_application=KnowledgeHubProject/nict-editing-studio-app
+checklist=phase-2-checklist.md
 
 ## Goal
 
-Establish TFAF's common application Settings mechanism and prove it in NICT Editing Studio, beginning with Fold behavior and Font/Text settings.
+Establish TFAF's reusable Settings model/registry, observable Settings View,
+persistence service contract, platform-adaptive Settings shell and application
+extension point. Prove the foundation through controllable storage and
+Material/Cupertino widget interaction.
 
-Phase 2 turns settings from application-local preferences into reusable framework capability: a Settings model, persistence boundary, standard Settings UI, and application extension point.
+[Phase 2.1](phase-2.1.md) applies this accepted foundation to Fold/hinge
+presentation, OS-aware text scaling and the Editing Studio development driver.
+Both documents preserve the original Common Settings scope. The Settings
+foundation is accepted through TFAF-S01/S02/S03 and the comprehensive Phase
+review recorded below. Phase 2.1 remains planned and has not started.
 
 ## Architectural rules
 
@@ -30,10 +46,6 @@ Phase 2 turns settings from application-local preferences into reusable framewor
 12. Persisted preferences, observable Settings Views, environment observations,
     and resolved presentation are separate concerns. Widgets use the Settings
     ViewModel; they do not read or write storage directly.
-
-The contracts below resolve the Phase 2 planning review. They specify future
-behavior, not implemented capability or acceptance evidence; status remains
-`planned`. The reference-app counterpart is Editing Studio App Phase 3.
 
 ## Scope
 
@@ -53,10 +65,17 @@ The initial persisted common values are pane preference (default
 multiplier (default `1.0`). Pane preference and hinge preference are independent
 settings, not alternative meanings of one Fold enum.
 
+The common value catalog is pane preference `automatic` / `preferSinglePane` /
+`preferDualPane`, hinge preference `automatic` / `avoid` / `span`, and text-size
+multiplier `1.0` / `1.15` / `1.30`. Other persisted multipliers are invalid and
+fall back to `1.0`. Keep saved-value presence distinguishable from defaults:
+an explicitly stored `automatic` is different from an absent value. Phase 2.1
+uses that distinction when applying configuration fallbacks.
+
 Expose an observable Settings View through the application-session View space,
 with loading, effective values, unsaved/save-error state, retry and reset
-intents. The Settings service owns validation and persistence; a pure resolver
-combines preferences with environment and presentation-session overrides.
+intents. The Settings service owns validation and persistence. Phase 2.1 owns
+the pure resolver that combines preferences with environment and presentation-session overrides.
 Existing `ResourceListDetailDisplayModel` remains session state and is not
 serialized wholesale. Setting changes must not recreate Resource Views,
 replace resource selection, or issue Resource/Aggregate domain commands.
@@ -90,9 +109,10 @@ Required lifecycle:
   Unknown keys are not interpreted or silently deleted by ordinary edits.
   Unsupported future record versions are not automatically rewritten; report
   unsupported storage and allow an explicit reset.
-- Reset restores all common defaults, clears common presentation overrides in
-  every resource tab, and persists that intent through the same revision/error
-  rules. It does not clear selected resources or application-owned extension data.
+- Reset restores all common defaults and persists that intent through the same
+  revision/error rules while preserving application-owned extension data.
+  Expose the reset intent for Phase 2.1 to clear presentation-session overrides;
+  resource selection remains outside Settings ownership.
 
 Test with a controllable fake storage adapter: delayed reads, out-of-order
 completion, read/write failure, invalid/missing values, unknown keys, unsupported
@@ -113,163 +133,172 @@ Settings
 └─ <Application Settings>
 ```
 
-### TFAF-S04 Fold behavior
+The shell edits the common setting IDs and values defined above through the
+Settings View. Phase 2.1 owns their effect on Resource List/Detail and application
+text. Availability is supplied through the common contract and tested with
+synthetic capabilities here; actual hinge/window capability wiring is Phase 2.1.
+Use one synthetic application setting to prove extension without adding a
+production Editing Studio preference.
 
-Introduce an application-level adaptive policy with at least:
+## Acceptance and validation ownership
 
-- `automatic`
-- `preferSinglePane`
-- `preferDualPane`
+This Phase owns these closure criteria:
 
-`automatic` uses current device/display environment supplied by Core. Explicit preferences influence TFAF composition but do not replace environment facts.
+- stable Settings IDs, groups, defaults, validation and effective values;
+- an observable Settings View in the application-session View space, with
+  loading, unsaved/error, retry and reset state/intents;
+- the injected storage service/adapter boundary and every lifecycle/record rule
+  in TFAF-S02, including acknowledged durability and preserved unknown keys;
+- common Material and Cupertino shells using the same semantic IDs, values,
+  validation and storage contract;
+- an extension setting that can be added without changing TFAF internals;
+- tests that distinguish stored preferences from environment/capability input;
+- controllable-storage behavior tests for delayed reads, newest-intent
+  preservation, serialized/coalesced saves, failure/retry/reset, malformed or
+  missing values, unknown keys, future versions and acknowledged/failed restart;
+- widget/interaction tests for both platform shells and synthetic availability.
 
-The Phase 1 List/Detail reference path is the primary executable proof.
+Run narrow behavior suites and the affected-consumer accumulator for each
+Step. Every Step retains its independent acceptance review and commit; this
+Phase retains the mandatory comprehensive review, closure ledger and release
+commit. The repository-full validation is deliberately deferred to Phase 2.1,
+which owns `scripts/validate-full.sh` for the entire serial framework chain.
+Do not claim repository-full or three-platform runtime assurance at this
+intermediate closure.
 
-#### Resolution and precedence
+The aggregate chain has one Phase-base repository: TFAF. Editing Studio App
+Phase 3 remains a separate application Phase with its own authority, validation
+and commits. It supplies the consumer/runtime evidence required by Phase 2.1;
+it is not a member of this aggregate chain. Framework and app evidence may be
+shared with explicit ownership. A future execution PLAN must not silently add
+another Phase-base repository to this single-repository aggregate contract.
 
-First calculate physical layout eligibility using the existing safe regions,
-minimum pane dimensions and selected hinge policy. A preference never makes an
-ineligible two-pane layout eligible. Preserve Phase 1 selection and compact
-navigation state across every settings, window-size and posture transition.
+## Frozen successor handoff
 
-For eligible layouts, an explicit per-tab session choice (split or detail focus)
-overrides the persisted pane preference. Otherwise:
+Produce setting IDs/defaults, the versioned record and compatibility rules,
+the View/service/storage and extension APIs, asynchronous ownership/disposal
+rules, controllable-storage fixtures, Material/Cupertino interaction evidence,
+and the accepted Phase closure/release identity. Phase 2.1 consumes these
+artifacts without redefining persistence behavior.
 
-| Pane preference | Effective default |
-| --- | --- |
-| `automatic` | Existing Phase 1 adaptive behavior: split when eligible, sequential otherwise. |
-| `preferSinglePane` | Sequential List/Detail even with sufficient space; show detail only when compact-detail intent and a valid selection exist. |
-| `preferDualPane` | Split when eligible; ordinary sequential fallback when not eligible. |
+## Non-goals
 
-Temporary lack of space hides split/focus controls but does not erase the
-session choice; restoring space restores that choice. Even under
-`preferSinglePane`, an eligible layout offers an explicit switch to split,
-so the global default does not trap the user in a single-pane presentation.
-Detail focus still requires a valid selection and `allowDetailFocus`.
-Session choices are independent per resource tab and are not persisted.
+- Applying preferences to Resource pane/hinge composition or app text.
+- The real local-storage implementation and reference-app runtime wiring.
+- Android/iOS/Web runtime smoke acceptance, owned by Phase 2.1.
+- Server preference synchronization, arbitrary typography or persisted Resource
+  selection.
 
-Hinge resolution is independently: per-tab session override -> explicitly saved
-global hinge preference -> configuration `defaultHingePolicy` -> framework
-`automatic`. Missing pane settings inherit configuration defaults where
-provided, otherwise `automatic`; an explicitly saved `automatic` is a real
-choice, not a missing value. Preserve the Phase 1 avoid/span viability rules,
-continuous-region fallback and physical-gap occlusion warning. A dual-pane
-preference must not silently change avoid to span to make a layout fit.
+## Split record — 2026-10-01
 
-An explicit common pane-setting edit clears only pane session overrides in all
-tabs; a hinge-setting edit clears only hinge overrides. This makes a common
-setting change immediately observable without changing the other dimension.
-Automatic restoration, resizing and capability changes clear neither.
-Text-size edits clear neither. Reset clears both as specified above.
+Explicit invocation: `cncf-split-phase phase 2`, following the same task's
+pre-entry Phase gate. Source goal/status: `none / no-goal-pre-entry`.
+The source was planned and contained no completed Step, Slice, validation or
+commit history to move. Existing 2026-09-29 architectural decisions remain
+background for this serial split.
 
-#### Availability and retention
+**Pre-split gate evidence:** `SPLIT_REQUIRED`, `split_reasons=[time-bound]`,
+expected 9.5h with an 8–12h range. The critical path included new storage
+lifecycle/record contracts, both platform shells, adaptive precedence,
+accessibility scaling, consumer integration, focused validation, independent
+reviews, platform smokes and release. No comparable measured calibration was
+available; no multiplier was applied.
 
-Availability is based on layout capability, not Fold hardware or an Android/iOS
-name: tablets, desktop and resizable windows can benefit from pane preference.
-Keep the pane setting accessible even while compact so the next expanded layout
-can be configured. A hinge setting without an applicable separator is disabled
-with an explanation rather than deleting its stored value.
-When a setting becomes temporarily inapplicable, use a safe effective fallback
-without writing that fallback to storage. Re-enable and re-resolve the retained
-choice when capability returns. Session toolbar controls keep the Phase 1
-eligibility rules; Settings availability is not the same as toolbar visibility.
+Ordered children are Phase 2 (TFAF-S01/S02/S03, expected 5h) and Phase 2.1
+(TFAF-S04/S05/S06, expected 5.5h including driver coordination). Both fit the
+8h ceiling and neither expected duration is below 5h. Their combined original
+scope cannot fit the ceiling; no short-child exception or profile-cost-only
+rejection is used. Added planning/handoff/review/commit overhead is about 1h.
+No total wall-time saving is claimed. The accepted Settings contract supports
+a lower-cost successor without repeating lifecycle/API design.
 
-### TFAF-S05 Font/Text behavior
+Phase 2 uses GPT-6.1 Sol high for its interacting public record/API and
+asynchronous lifecycle decisions; its routine implementation is necessary to
+prove that same foundation. Phase 2.1 uses GPT-6.1 Sol medium for the specified
+presentation and consumer work after the frozen handoff. Both use standard
+parent/agent mode. Incoming semantic handoffs are `[]` for both: ordinary
+review, local release and profile transition do not create a semantic split
+reason. Final-only complete validation belongs to Phase 2.1.
 
-Introduce a common application text preference.
+## Current structural planning gate
 
-The design must preserve the system accessibility text scale. The effective text presentation is derived from system preference plus the TFAF/application preference rather than replacing the system setting.
+Phase Plan Gate: PROCEED
+- target: calibrated expected duration centered on 6h; allowed ceiling 8h
+- estimate_calibration: no comparable planned/actual execution evidence; no multiplier
+- planning_demand: protected-decision
+- recommended_parent_profile: gpt-6.1-sol / high
+- profile_cost_role: expensive reasoning kernel
+- expensive_reasoning_kernel: public Settings record/API, asynchronous read/write ordering and service/View lifecycle ownership
+- frozen_profile_transition_handoff: produces the accepted Settings contract and behavioral evidence for Phase 2.1
+- parent_reasoning_mode_policy: standard
+- estimated_at_recommended_profile: expected 5h; range 4.5–6.5h; 1h below target and 3h below ceiling
+- incoming_semantic_handoffs: []
+- merge_attempts_for_every_sub_4h_child: none; no expected child below 4h
+- rebalance_attempts_for_every_sub_5h_child: none; no expected child below 5h
+- adjacent_merge_structural_rejection_evidence: combined original expected 9.5h exceeds 8h
+- profile_cost_only_rejection_forbidden: true
+- short_child_basis: none
+- overhead_tradeoff: about 1h additional split assurance overhead; no total wall-time saving claimed; bounded closure and durable contract reduce downstream rediscovery
+- agent_reasoning_mode_policy: default standard; consider pro only at an eligible agent launch with supported quality-first evidence
+- runtime_suitability: re-evaluate in the Phase execution task
+- source: applied split from Phase 2
 
-Do not prematurely require arbitrary font-family selection; establish the common text-size/font policy boundary first.
+## Closure and frozen handoff — 2026-10-01
 
-This Phase implements text size only: `1.0` (standard), `1.15`, and `1.30`,
-with `1.0` as default. Other persisted multipliers are invalid and fall back to
-`1.0`; font-family, weight and line-height customization are out of scope.
+This is a normal Phase release with focused assurance and an explicit pending
+aggregate validation gate, not full-repository or platform-runtime assurance.
+The closed status becomes authoritative only with the distinct release commit
+containing this record and its verified `Phase-Closure-Binding: PHASE-2` receipt.
 
-For an unscaled logical font size `s`, let `S(s)` be the current OS-provided
-scaling function and `m` the selected app multiplier. Effective size is
-`m * S(s)`, applied once at the common presentation boundary. Preserve the
-OS function rather than replacing it with a fixed scalar; `m = 1.0` must
-produce exactly the OS result. Changing system scale recomputes presentation
-without changing saved app preferences.
+The original Phase base is `5b779fe151a8c9cd21feb6c076038729381cde83`.
+The independently reviewed and accepted Step commits are:
 
-Apply this to app text, navigation, standard Resource List/Detail and Settings,
-including its own controls and dialogs. Do not scale icons, images or geometry
-by this multiplier, apply it twice in nested screens, or cap away OS enlargement.
-At the largest app value combined with enlarged system text, text remains
-readable and controls reachable through wrapping/scrolling or safe layout
-fallback. Settings must remain usable to return to standard size.
+| Step | Acceptance commit | Focused behavioral and consumer evidence |
+| --- | --- | --- |
+| TFAF-S01 | `0f73dc61cc706a696c3b8814120dc85f15162571` | 29 registry/View cases; 19 existing ApplicationViewModel/ListDetail cases |
+| TFAF-S02 | `6b495e7e23d17bd760bb7248d17a618174ac80f0` | 50 record/controller cases; 31 registry/View/ApplicationViewModel cases |
+| TFAF-S03 | `830b673dd89ddfcaa92d0f360d522baf4d44cb62` | 57 Material/Cupertino shell/navigation cases; 81 accumulated Settings/ApplicationViewModel cases |
 
-Acceptance includes default-system scaling and enlarged-system scaling for each
-app value, a non-linear fake OS scaling function to prove composition order,
-live OS changes, and compact/split/Settings navigation without clipping or
-unreachable controls. Example: if `S(16) = 24`, `m = 1.30` yields `31.2`.
+Each Step also passed its focused analysis, no-change formatting and diff
+checks. These are executed cases, not a claim of distinct aggregate case
+counts. The canonical [checklist](phase-2-checklist.md) records the separate
+Step acceptance basis.
 
-### TFAF-S06 NICT Editing Studio development driver
+The mandatory epoch-1 comprehensive review inspected the entire original-base
+through accepted-head range: all 21 changed paths, 18 whole target programs,
+the controllable storage fixture, normative contract and canonical checklist,
+plus the affected consumer and cross-Step integration edges. It returned PASS
+with no Current Phase Blockers, Hygiene or Development Candidates. Review
+identity: `/root/tfaf_phase2_full_review`. Verified V3 disposition SHA-256:
+`bfb327358b682be60af272342d4edfcacbff84cb1160c564ca2794bdbbb1955e`.
+No post-review product repair or second comprehensive review was required.
 
-Use `nict-editing-studio-app` to prove:
+The reusable handoff consists of the stable common IDs/defaults and finite
+typed extension registry; immutable snapshots and explicit intent/presence;
+the version-1 record and compatibility/unknown-data rules; injected,
+caller-owned storage; revision-aware read/write/retry/reset behavior; owned
+and borrowed Settings Views; controllable-storage fixtures; and shared native
+Material/Cupertino shell/navigation. See the
+[accepted Settings contract](../notes/application-settings.md). Phase 2.1
+consumes these APIs and fixtures without redefining persistence.
 
-- opening the common Settings UI;
-- changing Fold behavior;
-- observing the existing List/Detail presentation respond;
-- changing text size/font preference;
-- observing the application update consistently;
-- persistence across application restart;
-- no Editing-Studio-specific Widget implementation for the common settings.
+Repository-full validation was deliberately not run:
+`repository_full_suite=deferred-not-run`. The reciprocal serial chain is
+`PHASE-2 -> PHASE-2.1`; final owner `PHASE-2.1` must verify this release's
+accepted ancestry and generated aggregate-validation commit audit, then run
+`scripts/validate-full.sh` once on its own frozen final release tree.
+The method remains `local-driver-acceptance`, timing `final-only`, bootstrap
+`none`. No SBT or CAR-lint requirement applies to this Flutter package.
 
-Application-specific settings may be added as an extension proof if useful, but are not required for Phase closure.
+Both accepted follow-up ledgers are empty: Hygiene `[]` and Development
+Candidates `[]`, with no unpersisted records and no empty journal files
+created. Closure binding retains the absent canonical targets
+`docs/journal/2026/10/2026-10-01-phase-2-hygiene-follow-up.md` and
+`docs/journal/2026/10/2026-10-01-phase-2-development-candidate-follow-up.md`.
 
-## Settings versus environment
-
-Keep these concepts separate:
-
-```text
-ApplicationSettings
-  AppearanceSettings
-  AdaptiveSettings
-  <application extensions>
-
-DeviceEnvironment
-  window/display regions
-  display features / hinge
-  fold posture
-  system text scale
-  platform capabilities
-```
-
-TFAF resolves effective presentation from both inputs.
-
-## Acceptance criteria
-
-Phase 2 is complete when:
-
-- TFAF exposes a common Settings model and standard Settings shell.
-- settings are persisted through an abstract persistence boundary.
-- Fold behavior supports automatic/single-pane/dual-pane preference.
-- the automatic path continues to consume Core environment primitives.
-- Font/Text preference works without suppressing system accessibility scaling.
-- NICT Editing Studio demonstrates both settings against the Phase 1 List/Detail path.
-- application settings can be extended without modifying TFAF internals.
-- tests distinguish persisted user preference from runtime device environment.
-- tests prove pane/session/hinge precedence, global-setting edits, reset,
-  insufficient-space fallback and retention across capability loss/return;
-- persistence tests cover the lifecycle and failure cases above, including
-  latest-intent preservation and restart after an acknowledged save;
-- text-size tests prove the defined composition, single application of scaling,
-  live OS changes and accessible controls at enlarged sizes;
-- Android Material and iOS Cupertino Settings realizations pass widget/interaction
-  tests using the same setting IDs, values, validation and storage contract;
-- the reference app supplies an Android device/emulator and iOS simulator/device
-  smoke record for opening Settings, changing both setting groups, navigating
-  back, and restoring acknowledged values after restart. Platform, environment
-  and limits are recorded; unavailable runtime evidence stays pending, not passed;
-- reference-app tests cover compact/expanded and both hinge-axis fixtures,
-  disabled-to-enabled hinge settings and unchanged selected resource across tabs.
-
-The same acceptance matrix applies to Editing Studio App Phase 3; evidence may
-be shared with clear ownership rather than requiring duplicate executions.
-Existing Web startup remains supported, with a browser smoke check for Settings
-and local preference restore. Server synchronization, production server
-integration, arbitrary typography and persistent Resource selection remain out
-of scope. A synthetic application setting is sufficient to test the extension
-contract; no production application setting is required.
+Phase 2.1's plan/checklist and shared Phase projections are saved as one
+planned/not-started management set. No successor is executed by this release.
+The existing architecture-note planning change is preserved outside the
+release payload. App Phase 3 and Core remain outside this mutation boundary.
+Concrete adapters, resolved pane/hinge/text effects and Android/iOS/Web runtime
+proof stay owned by Phase 2.1 and the separately authorized app driver.

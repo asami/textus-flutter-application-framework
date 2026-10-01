@@ -159,4 +159,10 @@ For local development, keep this repository and `textus-flutter-core` as sibling
 directories, then run `flutter pub get`, `flutter analyze`, and `flutter test`.
 The repository-owned `scripts/validate-full.sh` runs analysis and the full test
 suite. See the [Phase index](docs/phase/README.md): Phase 1 is closed and
-Phase 2 (common Settings) remains planned.
+Phase 2 (Settings model, persistence and platform shell) is closed with focused
+assurance and a comprehensive PASS review. Phase 2.1 (Fold/Font and
+reference-driver proof) remains planned/not-started. The serial split was
+recorded on 2026-10-01; complete framework validation is explicitly
+deferred-not-run and belongs to Phase 2.1. See the
+[Settings contract](docs/notes/application-settings.md) and
+[Phase 2 handoff](docs/phase/phase-2.md#closure-and-frozen-handoff--2026-10-01).

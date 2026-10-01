@@ -69,9 +69,27 @@ S03 does not establish Phase closure.
 
 ## Foundation closure and successor handoff
 
-- Current status: OPEN
-- [ ] Seal the public Settings record/API, lifecycle and fixture handoff to Phase 2.1.
-- [ ] Complete the mandatory comprehensive Phase review and bounded closure repairs if required.
-- [ ] Persist closure, Hygiene/Development Candidate records and normal Phase release commit.
-- [ ] Record focused assurance and repository-full validation deferred-not-run to PHASE-2.1.
-- [ ] Keep Phase 2.1 planned and app Phase 3 outside this aggregate chain.
+- Current status: CLOSED
+- [x] Seal the public Settings record/API, lifecycle and fixture handoff to Phase 2.1.
+- [x] Complete the mandatory comprehensive Phase review and bounded closure repairs if required.
+- [x] Persist closure, Hygiene/Development Candidate records and normal Phase release commit.
+- [x] Record focused assurance and repository-full validation deferred-not-run to PHASE-2.1.
+- [x] Keep Phase 2.1 planned and app Phase 3 outside this aggregate chain.
+
+Closure basis (2026-10-01): all three accepted Step commits and their focused
+evidence are recorded above. The mandatory epoch-1 full review of the original
+Phase-base through S03 accepted HEAD returned PASS across all 21 paths and
+cross-Step consumer edges, with no blockers or ledger candidates; no repair
+cycle was needed. Verified review disposition:
+`bfb327358b682be60af272342d4edfcacbff84cb1160c564ca2794bdbbb1955e`.
+Both unpersisted accepted-ID sets are empty; absent canonical journals remain
+absent rather than being populated with empty files.
+
+This closed checklist is release content: closure is authoritative only with
+the separate normal release commit containing this record and its verified
+`Phase-Closure-Binding: PHASE-2` receipt. See the
+[Phase closure and handoff](phase-2.md#closure-and-frozen-handoff--2026-10-01).
+Repository-full validation is deliberately deferred-not-run to PHASE-2.1,
+whose configured `scripts/validate-full.sh` remains pending. Concrete
+adapters, preference effects and platform runtime assurance are not accepted
+by this foundation closure.
