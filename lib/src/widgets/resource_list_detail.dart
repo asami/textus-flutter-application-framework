@@ -10,6 +10,8 @@ import '../resource/resource_data_source.dart';
 import '../resource/resource_view_model.dart';
 import '../view/resource_list_detail_display_model.dart';
 import '../view/resource_list_detail_hinge_policy.dart';
+import 'application_text_scaling.dart';
+import 'application_text_toolbar.dart';
 
 /// Standard, configuration-driven Resource List + Detail presentation.
 class ResourceListDetail extends StatefulWidget {
@@ -157,6 +159,27 @@ class _ResourceListDetailState extends State<ResourceListDetail> {
             presentation == ResourceListDetailPresentation.compactDetail &&
             TickerMode.valuesOf(context).enabled &&
             activeRoute;
+        final title =
+            presentation == ResourceListDetailPresentation.compactDetail ||
+                presentation == ResourceListDetailPresentation.detailFocused
+            ? widget.configuration.detailTitle
+            : widget.configuration.listTitle;
+        final leading =
+            presentation == ResourceListDetailPresentation.compactDetail
+            ? BackButton(onPressed: _showList)
+            : null;
+        final actions = _actionsFor(
+          presentation,
+          splitCapable: splitCapable,
+          hingePolicy: hingePolicy,
+          avoidViable: avoidViable,
+          spanViable: spanViable,
+          hasOcclusion: fold?.hasOcclusion ?? false,
+          showHingePolicy:
+              fold != null &&
+              widget.configuration.allowHingePolicySwitch &&
+              (avoidViable || spanViable),
+        );
 
         return PopScope<Object?>(
           canPop: !interceptsCompactBack,
@@ -164,31 +187,15 @@ class _ResourceListDetailState extends State<ResourceListDetail> {
             if (!didPop && interceptsCompactBack) _showList();
           },
           child: Scaffold(
-            appBar: AppBar(
-              title: Text(
-                presentation == ResourceListDetailPresentation.compactDetail ||
-                        presentation ==
-                            ResourceListDetailPresentation.detailFocused
-                    ? widget.configuration.detailTitle
-                    : widget.configuration.listTitle,
-              ),
-              leading:
-                  presentation == ResourceListDetailPresentation.compactDetail
-                  ? BackButton(onPressed: _showList)
-                  : null,
-              actions: _actionsFor(
-                presentation,
-                splitCapable: splitCapable,
-                hingePolicy: hingePolicy,
-                avoidViable: avoidViable,
-                spanViable: spanViable,
-                hasOcclusion: fold?.hasOcclusion ?? false,
-                showHingePolicy:
-                    fold != null &&
-                    widget.configuration.allowHingePolicySwitch &&
-                    (avoidViable || spanViable),
-              ),
-            ),
+            appBar: ApplicationTextScaling.maybeTextScalerOf(context) == null
+                ? AppBar(title: Text(title), leading: leading, actions: actions)
+                : applicationTextAppBar(
+                    context,
+                    title: title,
+                    width: constraints.maxWidth,
+                    leading: leading,
+                    actions: actions,
+                  ),
             body: SafeArea(
               child: _ViewportObserver(
                 approvedViewport: _approvedBodyViewport,

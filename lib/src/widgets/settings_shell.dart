@@ -1,9 +1,13 @@
+import 'dart:math' as math;
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../settings/setting_definition.dart';
 import '../settings/settings_snapshot.dart';
 import '../view/settings_view.dart';
+import 'application_text_scaling.dart';
+import 'application_text_toolbar.dart';
 
 /// Visual realization only; identity, values and storage remain platform-neutral.
 enum SettingsPresentation { adaptive, material, cupertino }
@@ -132,6 +136,26 @@ class _SettingsShellState extends State<SettingsShell> {
         ),
       ),
     );
+    if (ApplicationTextScaling.maybeTextScalerOf(context) != null) {
+      return LayoutBuilder(
+        builder: (context, constraints) => cupertino
+            ? CupertinoPageScaffold(
+                navigationBar: ApplicationTextCupertinoBar(
+                  context,
+                  width: constraints.maxWidth,
+                ),
+                child: body,
+              )
+            : Scaffold(
+                appBar: applicationTextAppBar(
+                  context,
+                  title: 'Settings',
+                  width: constraints.maxWidth,
+                ),
+                body: body,
+              ),
+      );
+    }
     return cupertino
         ? CupertinoPageScaffold(
             navigationBar: const CupertinoNavigationBar(
@@ -220,7 +244,10 @@ class _SettingsShellState extends State<SettingsShell> {
       final title = Semantics(
         selected: selected,
         value: selected ? 'Current value' : null,
-        child: Text('${selected ? '✓ ' : ''}${entry.label}'),
+        child: _modalText(
+          '${selected ? '✓ ' : ''}${entry.label}',
+          logicalSize: cupertino ? 21 : null,
+        ),
       );
       final key = ValueKey('settings-choice:${definition.id}:$index');
       void select() => Navigator.of(modalContext).pop(entry.value);
@@ -239,14 +266,14 @@ class _SettingsShellState extends State<SettingsShell> {
         context: context,
         useRootNavigator: false,
         builder: (modalContext) => CupertinoActionSheet(
-          title: Text(definition.label),
+          title: _modalText(definition.label, logicalSize: 13),
           actions: [
             for (var i = 0; i < definition.choices.length; i++)
               choice(i, modalContext),
           ],
           cancelButton: CupertinoActionSheetAction(
             onPressed: () => Navigator.of(modalContext).pop(),
-            child: const Text('Cancel'),
+            child: _modalText('Cancel', logicalSize: 21),
           ),
         ),
       );
@@ -255,7 +282,7 @@ class _SettingsShellState extends State<SettingsShell> {
         context: context,
         useRootNavigator: false,
         builder: (modalContext) => SimpleDialog(
-          title: Text(definition.label),
+          title: _materialChoiceTitle(definition.label),
           children: [
             for (var i = 0; i < definition.choices.length; i++)
               choice(i, modalContext),
@@ -275,9 +302,13 @@ class _SettingsShellState extends State<SettingsShell> {
       final resetKey = const ValueKey('settings-reset-confirm');
       void cancel() => Navigator.of(modalContext).pop(false);
       void reset() => Navigator.of(modalContext).pop(true);
-      const title = Text('Reset common settings?');
-      const explanation = Text(
+      final title = _modalText(
+        'Reset common settings?',
+        logicalSize: cupertino ? 17 : null,
+      );
+      final explanation = _modalText(
         'Restore common defaults. Application settings are kept.',
+        logicalSize: cupertino ? 13 : null,
       );
       return cupertino
           ? CupertinoAlertDialog(
@@ -287,28 +318,31 @@ class _SettingsShellState extends State<SettingsShell> {
                 CupertinoDialogAction(
                   key: cancelKey,
                   onPressed: cancel,
-                  child: const Text('Cancel'),
+                  child: _modalText('Cancel', logicalSize: 16.8),
                 ),
                 CupertinoDialogAction(
                   key: resetKey,
                   onPressed: reset,
-                  child: const Text('Reset'),
+                  child: _modalText('Reset', logicalSize: 16.8),
                 ),
               ],
             )
           : AlertDialog(
+              scrollable:
+                  ApplicationTextScaling.maybeTextScalerOf(modalContext) !=
+                  null,
               title: title,
               content: explanation,
               actions: [
                 TextButton(
                   key: cancelKey,
                   onPressed: cancel,
-                  child: const Text('Cancel'),
+                  child: _modalText('Cancel'),
                 ),
                 TextButton(
                   key: resetKey,
                   onPressed: reset,
-                  child: const Text('Reset'),
+                  child: _modalText('Reset'),
                 ),
               ],
             );
@@ -415,5 +449,49 @@ class _SettingsShellState extends State<SettingsShell> {
       style: DefaultTextStyle.of(context).style,
       child: Text(text, softWrap: true, overflow: TextOverflow.visible),
     ),
+  );
+
+  // Bound only the opted-in title; SimpleDialog keeps its native option scroll.
+  Widget _materialChoiceTitle(String text) => Builder(
+    builder: (context) {
+      if (ApplicationTextScaling.maybeTextScalerOf(context) == null) {
+        return _modalText(text);
+      }
+      final media = MediaQuery.of(context);
+      final usable =
+          media.size.height -
+          media.padding.vertical -
+          media.viewInsets.vertical -
+          48;
+      final available = usable.isFinite ? math.max(0.0, usable) : 0.0;
+      return ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: available * 0.35),
+        child: SingleChildScrollView(
+          key: const Key('settings-choice-title-viewport'),
+          child: _modalText(text),
+        ),
+      );
+    },
+  );
+
+  // Resolve inside each native role, observing the live app scope through modal
+  // rebuilds while retaining native colors/weights and the original role size.
+  Widget _modalText(String text, {double? logicalSize}) => Builder(
+    builder: (context) {
+      final scaler = ApplicationTextScaling.maybeTextScalerOf(context);
+      if (scaler == null) return Text(text);
+      final style = DefaultTextStyle.of(context).style;
+      return DefaultTextStyle(
+        style: logicalSize == null
+            ? style
+            : style.copyWith(fontSize: logicalSize),
+        child: Text(
+          text,
+          textScaler: scaler,
+          softWrap: true,
+          overflow: TextOverflow.visible,
+        ),
+      );
+    },
   );
 }
