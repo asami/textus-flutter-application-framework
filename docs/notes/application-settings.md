@@ -12,11 +12,15 @@ The fake-service tests prove observation and delegation, not storage durability.
 The additive [adaptive-presentation consumer](settings-adaptive-presentation.md)
 now supplies S04 pane/hinge effects through the existing Resource List/Detail
 display model and a borrowed binding over all resource tabs. Its implementation
-has passed focused validation and independent acceptance; its exact Step commit
-remains the final S04 acceptance gate.
+is accepted at Step commit `f4fbb4b5403dc060409958876adde1eacf8afd28`, with
+206 selected tests and an independent PASS acceptance review.
 The accepted foundation catalog, storage/controller lifecycle and native shell
-semantics below remain unchanged. S05 OS-aware text composition and S06 real
-adapter/application/runtime proof are still pending.
+semantics below remain unchanged. S05 is accepted at `13c5fcf3ae76ebb2da8a1f267b05a2b5b34c439a`;
+its [text-presentation contract](settings-text-presentation.md) preserves OS
+accessibility and passed independent review/repair closure. S06 supplies
+[optional local storage](local-settings-storage.md), committed at `2d6cdabcc505a21062475bedfd3691b6ccbc2c2b`,
+and the app's independently reviewed Android/iOS/Web reference proof.
+Phase 2.1's exact final driver passed clean analysis and 276 tests.
 
 ## Catalog and finite typed choices
 
@@ -33,7 +37,8 @@ Choice labels are user-facing and independent of wire identities. Pane and hinge
 preferences are distinct global types. They do not serialize
 `ResourceListDetailDisplayModel`, resource selection or session overrides. The
 S04 consumer explicitly maps global hinge preference to the existing session
-policy. S05 will compose the text multiplier with OS accessibility scaling.
+policy. The opt-in S05 boundary composes the text multiplier once with the
+original OS accessibility function: `effective.scale(s) = m * OS.scale(s)`.
 
 `SettingGroup`, `SettingChoice<T>` and `SettingDefinition<T extends Object>`
 contain final metadata and immutable copied catalogs. IDs, labels, group references
@@ -171,8 +176,11 @@ absence. Write completion means acknowledged durable whole-record replacement;
 failure means not acknowledged. Adapters must not report success early. The
 framework serializes writes; no CAS/server-profile requirement is introduced.
 S01 defines the service/storage boundary. S02 adds `SettingsRecord` and
-`SettingsController`; applications still supply their own adapter, without a
-framework dependency on a storage package or platform persistence implementation.
+`SettingsController`; those foundation Steps required application-supplied
+adapters without platform persistence dependencies. S06 adds the optional
+`createLocalSettingsStorage` adapter using `path_provider` on native platforms
+and `web` on browsers. Application composition injects either this adapter or
+another `SettingsStorage`; the controller and record contracts are unchanged.
 
 `SettingsRecord` retains this versioned JSON envelope:
 
@@ -348,7 +356,9 @@ and typed value; selecting the current value still creates one intent. Disabled
 controls remain visible with null callbacks and “Unavailable in this environment”;
 hidden controls are omitted. Capability updates preserve values and revisions.
 Cupertino switch rows do not toggle on row tap. Wrapped labels and descriptions
-retain OS text scaling; S03 does not apply the user text multiplier.
+retain OS text scaling. S03 alone does not apply the user text multiplier;
+placing `ApplicationTextScaling` in the app builder above Navigator/Router
+opts the same borrowed shell/routes/dialogs into S05 effective presentation.
 
 Choice/reset completion captures the original View and ignores stale completion
 after replacement/unmount. Choices additionally require the same registered
@@ -370,4 +380,7 @@ exactly one common-reset intent, including already-default or loading states;
 Cancel creates none. Extension/unknown retained data and unsupported-version
 recovery remain controller-owned. Shell/navigation executable specifications use
 the unchanged controllable adapter; acceptance, Phase closure and runtime proof
-remain separate workflow gates.
+remain separate workflow gates. See the [text-presentation contract](settings-text-presentation.md)
+for once-only nesting, live OS/View updates, wrapped/scrolled chrome and native
+modal role sizes. This presentation boundary performs no storage I/O and retains
+the foundation's finite schema, intent and acknowledgement authority.

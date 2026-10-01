@@ -1,6 +1,7 @@
 # Phase 2.1 - Common Settings Fold, Font and Reference Driver
 
-status=active
+status=closed
+closed_at=2026-10-01
 started_at=2026-10-01
 split_full_test_policy=final-only
 split_full_validation_method=local-driver-acceptance
@@ -23,15 +24,20 @@ to adaptive pane/hinge presentation and OS-aware text size, then prove the
 behavior through Editing Studio App Phase 3. This is the last resulting Phase
 and owns complete framework validation for `PHASE-2 -> PHASE-2.1`.
 
-Current status: active under the explicit 2026-10-01 invocation after the
-predecessor's accepted closure; TFAF-S04 has passed focused validation and
-independent acceptance, with its exact Step commit as the remaining gate.
+Current status: closed on 2026-10-01. TFAF-S04, S05 and S06 are accepted at
+`f4fbb4b5403dc060409958876adde1eacf8afd28`, `13c5fcf3ae76ebb2da8a1f267b05a2b5b34c439a` and `2d6cdabcc505a21062475bedfd3691b6ccbc2c2b` respectively.
+The separately owned reference-driver commit is `2464c8326409b8aeb00ff3b6350edf336587566f`.
+The one comprehensive Phase review and focused documentary closure check pass;
+the exact aggregate driver passed once with clean analysis and 276 tests.
+See the [completion record](../journal/2026/10/2026-10-01-phase-2.1-completion.md).
+This closed state becomes authoritative with the distinct release commit
+containing this document and `Phase-Closure-Binding: tfaf-phase-2.1-closure@1`.
 
 Owner: TFAF; the parent owns validation, independent acceptance and commits.
 
-Update rule: change Step status only against focused validation, independent
-acceptance and its exact commit. S04 implementation and independent review are complete;
-S05/S06 and full Phase closure/runtime evidence remain pending.
+Update rule: retain accepted Step revisions, actual independent review and
+validation evidence. All Step commits and runtime requirements are complete;
+this release binds the final closure without starting another Phase.
 
 Consume its setting IDs/defaults, versioned record, View/service/storage and
 extension APIs, lifecycle rules, fixtures, platform-shell evidence and release
@@ -120,6 +126,14 @@ eligibility rules; Settings availability is not the same as toolbar visibility.
 
 ### TFAF-S05 Font/Text behavior
 
+Current status: ACCEPTED at `13c5fcf3ae76ebb2da8a1f267b05a2b5b34c439a`.
+The [text-presentation consumer contract](../notes/settings-text-presentation.md)
+defines the opt-in APIs, borrowed lifetime, once-only nonlinear equation and
+native chrome/modal adaptations. Independent review and focused re-review
+resolved CB-TFAF-S05-01; 18 repaired presentation cases pass. The final
+276-case framework suite includes the complete scaler/boundary/presentation
+specifications. Real-adapter/runtime proof is separately supplied by S06.
+
 Introduce a common application text preference.
 
 The design must preserve the system accessibility text scale. The effective text presentation is derived from system preference plus the TFAF/application preference rather than replacing the system setting.
@@ -150,6 +164,16 @@ live OS changes, and compact/split/Settings navigation without clipping or
 unreachable controls. Example: if `S(16) = 24`, `m = 1.30` yields `31.2`.
 
 ### TFAF-S06 NICT Editing Studio development driver
+
+Current status: ACCEPTED. Framework local storage and shared toolbar exports
+are committed at `2d6cdabcc505a21062475bedfd3691b6ccbc2c2b`; the independently reviewed
+app driver and actual runtime records are committed at `2464c8326409b8aeb00ff3b6350edf336587566f`.
+Five adapter and fourteen Settings consumer specifications pass; full app
+analysis is clean and all 55 app tests pass. Android API 36 emulator and iOS
+18.3.1 simulator retained write/separate-process restore both pass. The final
+Web candidate's common UI, resource response and browser reload restoration
+pass. Physical fold/posture movement is covered by both-axis behavioral
+fixtures, not claimed from emulator/simulator runtime.
 
 Use `nict-editing-studio-app` to prove:
 
@@ -266,3 +290,27 @@ Phase Plan Gate: PROCEED
 - agent_reasoning_mode_policy: default standard; consider pro only at an eligible agent launch with supported quality-first evidence
 - runtime_suitability: re-evaluate in the Phase execution task; new design choices require a capability reassessment
 - source: applied split from Phase 2
+
+## Final closure — 2026-10-01
+
+The sole aggregate member is TFAF. Accepted predecessor release
+`65926f8ea4a69a52d6fe655d74673c21f4628b99` is the original Phase base and an
+ancestor of every accepted Step; S04 is a continuation commit, not a new base.
+The exact `bash scripts/validate-full.sh` ran once after the whole-Phase review
+and bounded documentary repairs, with exit 0, clean analysis and 276 passing
+tests. It discharges Phase 2's deferred framework-full validation obligation.
+The final product source/specifications are unchanged; only Git staging and
+closure documentation followed. Raw process output is retained in the journal.
+
+The user explicitly selected 「手動でコミットする」 after the registered
+runner's native-history delivery failure. Exact-path ordinary local Git is
+the selected execution route. Actual validation/review/runtime gates remain
+satisfied; no unsuccessful runner receipt is claimed as successful and no
+force-release or assurance waiver is used.
+
+Both reviewed Hygiene findings are resolved in their original completion
+journal. Current blockers [], unresolved Hygiene [], Development Candidates
+[], and both unpersisted ledgers []. The exact closed checklist and completion
+journal belong to the distinct Phase release containing this record.
+Editing Studio App Phases 2/3 retain their separate acceptance ownership.
+Core is unchanged. No successor implementation is started by this release.

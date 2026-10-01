@@ -3,7 +3,8 @@
 Date: 2026-10-01
 
 Current status: TFAF-S04 implementation, focused validation and independent
-acceptance have passed; the exact acceptance commit remains pending.
+acceptance have passed; S04 was accepted in commit
+`f4fbb4b5403dc060409958876adde1eacf8afd28`.
 
 Owner: TFAF presentation; application composition owns borrowed lifetimes and
 supplies capabilities. Core continues to own environment geometry.
@@ -146,7 +147,9 @@ the owned behavior specifications with native Dart/Flutter Given/When/Then claus
 Their controllable storage evidence concerns interface behavior only. Focused
 validation passed 206 selected tests; independent Step review and the focused
 repair-cycle-1 review resolved both findings without new blockers. The exact
-Step acceptance commit remains pending; no full Phase acceptance is implied.
-S05 OS-aware text composition and S06 application integration, real adapter restart
-and Android/iOS/Web runtime smoke remain open; no application completion or runtime
-durability is claimed by this consumer implementation.
+Step acceptance commit is `f4fbb4b5403dc060409958876adde1eacf8afd28`;
+no full Phase acceptance is implied.
+S05 OS-aware text composition and S06 real-adapter/reference-driver proof are
+accepted in Phase 2.1; see the [completion record](../journal/2026/10/2026-10-01-phase-2.1-completion.md).
+This S04 controllable-storage fixture itself proves no runtime durability;
+S06 owns the actual retained Android/iOS and Web restoration evidence.

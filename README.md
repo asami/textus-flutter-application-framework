@@ -157,18 +157,35 @@ the application must supply an authorized server client when one exists.
 
 For local development, keep this repository and `textus-flutter-core` as sibling
 directories, then run `flutter pub get`, `flutter analyze`, and `flutter test`.
-The repository-owned `scripts/validate-full.sh` runs analysis and the full test
-suite. See the [Phase index](docs/phase/README.md): Phase 1 is closed and
-Phase 2 (Settings model, persistence and platform shell) is closed with focused
-assurance and a comprehensive PASS review. Phase 2.1 (Fold/Font and
-reference-driver proof) is active from 2026-10-01, with S04 ready for commit. The
-[adaptive Settings consumer contract](docs/notes/settings-adaptive-presentation.md)
-defines the borrowed all-tab binding, pane/session precedence and retained hinge
-fallback. Focused validation (206 tests) and independent acceptance have passed;
-the exact S04 commit remains pending.
-S05 text scaling, S06 application/runtime proof and final full validation remain
-open. App integration is not yet complete. The serial split was
-recorded on 2026-10-01; complete framework validation is explicitly
-deferred-not-run and belongs to Phase 2.1. See the
-[Settings contract](docs/notes/application-settings.md) and
-[Phase 2 handoff](docs/phase/phase-2.md#closure-and-frozen-handoff--2026-10-01).
+The repository-owned `scripts/validate-full.sh` runs analysis and the full suite.
+
+### Completed Phases
+
+The [Phase index](docs/phase/README.md) records Phases 1, 2 and 2.1 as closed.
+Phase 2 established the Settings model, persistence lifecycle and native shell;
+Phase 2.1 completed Fold/hinge preferences, OS-aware text and the reference driver
+on 2026-10-01. Accepted Step commits are S04 `f4fbb4b5403dc060409958876adde1eacf8afd28`,
+S05 `13c5fcf3ae76ebb2da8a1f267b05a2b5b34c439a` and S06 `2d6cdabcc505a21062475bedfd3691b6ccbc2c2b`.
+The one whole-Phase review and focused closure check pass with no unresolved
+finding. The exact final driver passed clean analysis and all 276 tests,
+discharging Phase 2's deferred full-validation handoff.
+
+The [adaptive consumer](docs/notes/settings-adaptive-presentation.md) supplies
+borrowed all-tab binding, pane/session precedence and retained hinge fallback.
+The [text consumer](docs/notes/settings-text-presentation.md) exports
+`composeApplicationTextScaler` and borrowed `ApplicationTextScaling`. Place the
+boundary in `MaterialApp`/`CupertinoApp.builder` around Navigator/Router; logical
+font sizes render as `m * OS.scale(s)` once, preserving nonlinearity and live OS
+changes. Shared chrome/modal presentation wraps and scrolls enlarged text.
+`applicationTextAppBar` supplies the same behavior for application toolbar titles.
+
+The [optional local adapter](docs/notes/local-settings-storage.md) supplies opaque
+whole-record native/browser storage. Editing Studio's driver commit
+`2464c8326409b8aeb00ff3b6350edf336587566f` records shared composition, clean analysis,
+55 passing app tests, retained Android/iOS restart and final Web reload proof.
+Runtime environments and limits are in the
+[completion record](docs/journal/2026/10/2026-10-01-phase-2.1-completion.md).
+
+The user selected ordinary local Git for final commits after the registered
+runner's history-delivery failure. The distinct Phase release binds closure.
+Application Phases 2/3 retain separate pending acceptance; Core is unchanged.
