@@ -110,3 +110,35 @@ proposals. Completed server implementation and frozen wire contracts are not
 prototype closure prerequisites; simulation does not prove real CNCF admission.
 App Phase 5 consumes this prototype and owns real-server integration and final
 aggregate/E2E acceptance. Dependency contracts/Phases retain separate acceptance.
+
+## Provisional public Core consumer mapping — 2026-10-02
+
+App ESA4-02 / S01 authors the additive
+[Core candidate contract v1](../../../textus-flutter-core/docs/design/display-prototype-contract-v1.md).
+Validation and independent Step acceptance remain pending. TFAF's forthcoming
+ESA4-03 realization imports `package:textus_flutter_core/textus_flutter_core.dart`;
+it consumes DisplayListData/DisplayDetailData and their presentation models,
+DisplayEditBinding/DisplayFieldLocator/DisplayValue for semantic drafts and
+scoped errors, and DisplayMutationResult for committed versus pending evidence.
+Bindings stay beside fields; stage is never reverse-parsed into semantic input.
+
+PresentationContextPolicy admits bounded PresentationContext families with an
+injected UTC clock. LocalePresentationPayload and
+CorrelationPresentationPayload are generic presentation/continuation inputs.
+SuppliedArmPresentationPayload supplies the full registration key
+`(namespace, presentationSet, armId, definitionVersion)`; assignmentReference
+is fixed flow provenance. A/B/C examples supply identities without allocation
+or screen branches. No arm uses an explicitly registered neutral policy;
+unknown/incompatible definitions must preserve selection/draft and expose the
+incompatibility under the later framework/session policy. These UI behaviors
+remain ESA4-03/04 proof obligations.
+
+DisplayTransport takes typed query/read/update/create/delete requests with
+DisplayRequestMetadata; OrdinaryOperationTransport.execute accepts a separate
+OrdinaryOperationRequest. OrdinaryOperationResponse has only context/result
+and cannot imply a refreshed Display. Explicit Reload uses a separate Display
+read after Operation success. Scripted ports are raw FIFO playback with immutable
+call observation, no policy execution, semantic source changes, retry or implicit
+reload. They establish consumption rather than successful semantic execution.
+Existing ResourceDetailView action behavior retains its accepted legacy contract;
+the later Display session composes this separate candidate Operation/Reload path.
