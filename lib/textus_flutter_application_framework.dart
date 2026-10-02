@@ -30,3 +30,6 @@ export 'src/widgets/application_text_toolbar.dart' show applicationTextAppBar;
 export 'src/widgets/resource_list_detail.dart';
 export 'src/widgets/settings_shell.dart';
 export 'src/widgets/settings_navigation.dart';
+export 'src/display/display_definition_registry.dart';
+export 'src/display/display_presentation_controller.dart';
+export 'src/widgets/display_session_view.dart';
