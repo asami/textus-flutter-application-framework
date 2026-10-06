@@ -1,6 +1,7 @@
 /// Reusable, configuration-driven application UI for Textus Flutter apps.
 library;
 
+export 'src/capture/capture_storage_facade.dart';
 export 'src/configuration/presentation_realization.dart';
 export 'src/configuration/application_navigation_configuration.dart';
 export 'src/configuration/resource_list_detail_configuration.dart';
