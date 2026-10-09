@@ -2,6 +2,8 @@
 library;
 
 export 'src/capture/capture_storage_facade.dart';
+export 'src/capture/audio_capture_facade.dart';
+export 'src/capture/audio_capture_controller.dart';
 export 'src/capture/photo_capture_facade.dart';
 export 'src/capture/photo_capture_controller.dart';
 export 'src/configuration/presentation_realization.dart';
@@ -34,6 +36,8 @@ export 'src/widgets/resource_list_detail.dart';
 export 'src/widgets/settings_shell.dart';
 export 'src/widgets/settings_navigation.dart';
 export 'src/widgets/photo_capture_panel.dart';
+export 'src/widgets/audio_capture_panel.dart';
+export 'src/widgets/transcript_review_panel.dart';
 export 'src/widgets/photo_role_capture_panel.dart';
 export 'src/widgets/capture_image_preview.dart';
 export 'src/widgets/recognition_comparison_view.dart';
