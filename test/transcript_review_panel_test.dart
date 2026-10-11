@@ -27,6 +27,192 @@ void main() {
     });
 
     testWidgets(
+      'G1 live admission preserves exact dirty text and all captured revision callbacks',
+      (tester) async {
+        // Given saved audio, two exact proposals and a dirty draft under current caller admission.
+        await tester.runAsync(h.capture);
+        final first = (await tester.runAsync(h.controller.transcribe))!;
+        h.provider.text = ' second 日本語 proposal ';
+        await tester.runAsync(h.controller.transcribe);
+        h.controller.setDraftText(' dirty 📘\n  exact ');
+        var allowed = true;
+        final callbacks = <AudioTranscriptReview>[];
+        await tester.pumpWidget(
+          _root(
+            h.controller,
+            onChanged: callbacks.add,
+            interactionAllowed: () => allowed,
+          ),
+        );
+        await tester.ensureVisible(find.text('Transcript history'));
+        await tester.tap(find.text('Transcript history'));
+        await tester.pumpAndSettle();
+        final field = tester.widget<TextField>(
+          find.byKey(const ValueKey('transcript-review-text')),
+        );
+        final edit = field.onChanged!;
+        VoidCallback command(String suffix) {
+          // Capture the actual rendered correction/proposal callback before the policy flip.
+          final callback = tester
+              .widget<ElevatedButton>(
+                find.byKey(ValueKey('transcript-review-$suffix')),
+              )
+              .onPressed;
+          // The captured callback must be enabled for this current rendered owner.
+          expect(callback, isNotNull);
+          return callback!;
+        }
+
+        final correction = command('record-correction');
+        final latest = command('use-proposal');
+        final older = command('use-${first.reports.single.id}');
+        final review = h.controller.review!;
+        final encoded = AudioTranscriptCodec.encode(review);
+        final probes = h.provider.probes;
+        final inputs = h.provider.inputs.length;
+        final imports = h.store.imports;
+        // When admission flips without a frame, every real captured callback is denied.
+        allowed = false;
+        field.controller!.text = ' rejected local replacement ';
+        edit(' rejected local replacement ');
+        correction();
+        latest();
+        older();
+        // Then canonical dirty intent, reports, revisions, disk/provider counts and owner are unchanged.
+        expect(field.controller!.text, ' dirty 📘\n  exact ');
+        expect(h.controller.draftText, ' dirty 📘\n  exact ');
+        expect(h.controller.hasUnsavedText, isTrue);
+        expect(h.controller.review, same(review));
+        expect(AudioTranscriptCodec.encode(h.controller.review!), encoded);
+        expect(callbacks, isEmpty);
+        expect(h.provider.probes, probes);
+        expect(h.provider.inputs.length, inputs);
+        expect(h.store.imports, imports);
+        expect(h.store.documentWrites, 0);
+        // When the same owner reenables without rebuilding and records exact intent.
+        allowed = true;
+        edit(' exact 日本語📘\n  ');
+        correction();
+        // Then exactly one explicit correction retains every report and the exact text.
+        expect(callbacks, hasLength(1));
+        expect(callbacks.single.currentText, ' exact 日本語📘\n  ');
+        expect(callbacks.single.revisions.length, review.revisions.length + 1);
+        expect(callbacks.single.reports, review.reports);
+        // When the same captured callbacks record an intentional empty clear.
+        edit('');
+        correction();
+        // Then empty intent is a second explicit revision, not a missing proposal.
+        expect(callbacks, hasLength(2));
+        expect(callbacks.last.currentText, '');
+        expect(h.controller.hasUnsavedText, isFalse);
+        // When the accepted owner buffers and flushes directly while user UI is denied.
+        allowed = false;
+        h.controller.setDraftText(' owner Save flush ');
+        final flushed = h.controller.recordCorrection();
+        // Then the existing controller API still records the owner intent without a UI callback or disk claim.
+        expect(flushed.currentText, ' owner Save flush ');
+        expect(h.controller.hasUnsavedText, isFalse);
+        expect(callbacks, hasLength(2));
+        expect(h.store.documentWrites, 0);
+        // When allowed again, the captured latest and older proposal actions are explicit.
+        allowed = true;
+        latest();
+        older();
+        // Then both retain their exact source link and notify the same owner once each.
+        expect(callbacks, hasLength(4));
+        expect(callbacks[2].currentText, ' second 日本語 proposal ');
+        expect(callbacks.last.revisions.last.reportId, first.reports.single.id);
+        expect(h.store.imports, imports);
+        await tester.pumpWidget(const SizedBox.shrink());
+      },
+    );
+
+    for (final retirement in ['replace', 'round-trip', 'unmount']) {
+      testWidgets(
+        'G5 $retirement rejects render-captured text correction and proposals',
+        (tester) async {
+          // Given controller A with exact original/history/dirty text and its rendered callbacks.
+          await tester.runAsync(h.capture);
+          final saved = (await tester.runAsync(h.controller.transcribe))!;
+          h.controller.setDraftText(' A dirty ');
+          final other = AudioCaptureController(
+            facade: h.facade,
+            initialReview: saved,
+          );
+          other.setDraftText(' B dirty ');
+          final callbacks = <AudioTranscriptReview>[];
+          await tester.pumpWidget(
+            _root(h.controller, onChanged: callbacks.add),
+          );
+          await tester.ensureVisible(find.text('Transcript history'));
+          await tester.tap(find.text('Transcript history'));
+          await tester.pumpAndSettle();
+          final edit = tester
+              .widget<TextField>(
+                find.byKey(const ValueKey('transcript-review-text')),
+              )
+              .onChanged!;
+          final actions = [
+            for (final suffix in [
+              'record-correction',
+              'use-proposal',
+              'use-${saved.reports.single.id}',
+            ])
+              tester
+                  .widget<ElevatedButton>(
+                    find.byKey(ValueKey('transcript-review-$suffix')),
+                  )
+                  .onPressed!,
+          ];
+          final originalReview = h.controller.review;
+          final otherReview = other.review;
+          // When presentation retires A, including returning to the identical A under a new generation.
+          if (retirement == 'unmount') {
+            await tester.pumpWidget(const SizedBox.shrink());
+          } else {
+            await tester.pumpWidget(_root(other, onChanged: callbacks.add));
+            if (retirement == 'round-trip') {
+              await tester.pumpWidget(
+                _root(h.controller, onChanged: callbacks.add),
+              );
+            }
+          }
+          edit(' stale edit ');
+          for (final action in actions) {
+            // Given an actual old correction/latest/history action.
+            // When it is invoked after retirement.
+            action();
+            // Then it produces no revision callback to either owner.
+            expect(callbacks, isEmpty);
+          }
+          // Then neither review, exact dirty buffer or common history was mutated before rejection.
+          expect(h.controller.review, same(originalReview));
+          expect(other.review, same(otherReview));
+          expect(h.controller.draftText, ' A dirty ');
+          expect(other.draftText, ' B dirty ');
+          expect(h.controller.hasUnsavedText, isTrue);
+          expect(other.hasUnsavedText, isTrue);
+          if (retirement != 'unmount') {
+            expect(
+              tester
+                  .widget<TextField>(
+                    find.byKey(const ValueKey('transcript-review-text')),
+                  )
+                  .controller!
+                  .text,
+              retirement == 'round-trip' ? ' A dirty ' : ' B dirty ',
+            );
+          }
+          expect(h.store.documentWrites, 0);
+          expect(h.store.imports, 1);
+          expect(h.provider.inputs, hasLength(1));
+          await tester.pumpWidget(const SizedBox.shrink());
+          other.dispose();
+        },
+      );
+    }
+
+    testWidgets(
       'T1 exact visible Unicode whitespace and intentional empty clear need explicit revision',
       (tester) async {
         // Given a saved original and a clean editor with no transcript history.
@@ -346,10 +532,9 @@ final class _Harness {
   late AudioCaptureFacade facade;
   late AudioCaptureController controller;
 
+  // Compose real private storage and controlled providers without capture or inference.
   Future<void> open() async {
-    // Given a fresh test-owned directory and inert controlled provider.
     directory = await Directory.systemTemp.createTemp('tfaf-audio-');
-    // When real FileCaptureStore, Core service and borrowed interaction are composed.
     store = _Store(FileCaptureStore(directory.path));
     service = AudioCaptureService(
       runtime: provider,
@@ -359,7 +544,6 @@ final class _Harness {
     );
     facade = AudioCaptureFacade(service: service);
     controller = AudioCaptureController(facade: facade, now: () => _time);
-    // Then construction has no capture, inference, preparation or durable-write effects.
     expect(
       provider.starts +
           provider.probes +
@@ -371,9 +555,8 @@ final class _Harness {
     expect(await directory.exists(), isTrue);
   }
 
+  // Drain the fixture controller before disposing Core and removing its own directory.
   Future<void> close() async {
-    // Given the test-owned controller/service and directory with settled gates.
-    // When composition explicitly detaches, disposes Core and removes its files.
     try {
       await controller.detach();
     } catch (error) {
@@ -382,19 +565,16 @@ final class _Harness {
     controller.dispose();
     await service.dispose();
     await directory.delete(recursive: true);
-    // Then provider ownership was never transferred and the fixture is terminal.
     expect(provider.disposals, 0);
     expect(await directory.exists(), isFalse);
     expect(controller.isDisposed, isTrue);
   }
 
+  // Explicitly record/import exact WAV bytes and check retained original provenance.
   Future<AudioTranscriptReview> capture() async {
-    // Given an idle empty interaction and exact one-second controlled WAV.
     expect(controller.review, isNull);
-    // When capture starts and explicitly stops through real durable import.
     await controller.startRecording();
     final review = await controller.stopRecording();
-    // Then exact bytes and original provenance exist before review success.
     expect(
       await store.delegate.readMaterial(review.original.material),
       orderedEquals(_wave()),
@@ -443,78 +623,85 @@ final class _Provider
   bool get isSupported => supported;
 
   @override
+  // Count starts and apply controlled permission/capture gate or fault.
   Future<void> startRecording(AudioRecordingConfiguration configuration) async {
-    // Given an explicit caller-owned duration configuration.
     expect(configuration.maxDurationSeconds, inInclusiveRange(1, 120));
-    // When controlled start is counted, held or actually denied.
     starts++;
     receivedConfiguration = configuration;
-    if (!startEntered.isCompleted) startEntered.complete();
-    if (startGate != null) await startGate!.future;
-    if (startError != null) throw startError!;
-    // Then successful permission/capture start preserves the exact configuration instance.
+    if (!startEntered.isCompleted) {
+      startEntered.complete();
+    }
+    if (startGate != null) {
+      await startGate!.future;
+    }
+    if (startError != null) {
+      throw startError!;
+    }
     expect(receivedConfiguration, same(configuration));
   }
 
   @override
+  // Return exact controlled original WAV bytes and timestamp.
   Future<CapturedAudio> stopRecording() async {
-    // Given a previously explicit microphone start.
     expect(starts, greaterThan(0));
-    // When explicit stop returns canonical original bytes.
     stops++;
     final captured = CapturedAudio(
       bytes: _wave(),
       capturedAt: _time,
       originalName: 'source.wav',
     );
-    // Then stop returns the exact WAV and timestamp without a second start.
     expect(captured.bytes, orderedEquals(_wave()));
     expect(captured.capturedAt, _time);
     return captured;
   }
 
   @override
+  // Count recording cleanup and release a pending start.
   Future<void> cancelRecording() async {
-    // Given owned unsaved recording or a pending permission start.
-    // When explicit cleanup unblocks that start and records cancellation.
     recordingCancels++;
-    if (startGate != null && !startGate!.isCompleted) startGate!.complete();
-    // Then the caller can observe cleanup and no new capture is launched.
+    if (startGate != null && !startGate!.isCompleted) {
+      startGate!.complete();
+    }
     expect(recordingCancels, greaterThan(0));
     expect(startGate == null || startGate!.isCompleted, isTrue);
   }
 
   @override
+  // Retain exact supplied bytes and apply the controlled playback gate.
   Future<void> play(Uint8List bytes) async {
-    // Given exact saved original bytes delivered by real Core IO.
     expect(bytes, orderedEquals(_wave()));
-    // When controlled playback snapshots input and optionally holds completion.
     played.add(Uint8List.fromList(bytes));
-    if (!playEntered.isCompleted) playEntered.complete();
-    if (playGate != null) await playGate!.future;
-    // Then playback retains exact supplied bytes without import/capture work.
+    if (!playEntered.isCompleted) {
+      playEntered.complete();
+    }
+    if (playGate != null) {
+      await playGate!.future;
+    }
     expect(played.last, orderedEquals(bytes));
   }
 
   @override
+  // Count playback cleanup and release its held completion.
   Future<void> stopPlayback() async {
-    // Given an owned playback cleanup request, possibly during its original read.
-    // When explicit cleanup unblocks pending runtime playback.
     playStops++;
-    if (playGate != null && !playGate!.isCompleted) playGate!.complete();
-    // Then cleanup is observable and held playback can settle.
+    if (playGate != null && !playGate!.isCompleted) {
+      playGate!.complete();
+    }
     expect(playStops, greaterThan(0));
     expect(playGate == null || playGate!.isCompleted, isTrue);
   }
 
   @override
+  // Observe exact locale/readiness and apply the controlled probe gate.
   Future<AudioProviderAvailability> availability(String locale) async {
-    // Given actual controlled readiness for the exact requested locale.
-    // When explicit readiness work is counted and optionally held.
     probes++;
     locales.add(locale);
-    if (!probeEntered.isCompleted) probeEntered.complete();
-    if (probeGate != null) await probeGate!.future;
+    if (!probeEntered.isCompleted) {
+      probeEntered.complete();
+    }
+    if (probeGate != null) {
+      await probeGate!.future;
+    }
     final value = AudioProviderAvailability(
       providerId: id,
       locale: locale,
@@ -523,7 +710,6 @@ final class _Provider
           ? null
           : 'actual readiness reason',
     );
-    // Then readiness retains exact provider/locale and cannot synthesize inference text.
     expect(value.providerId, id);
     expect(value.locale, locale);
     expect(inputs.length, lessThanOrEqualTo(probes));
@@ -531,46 +717,53 @@ final class _Provider
   }
 
   @override
+  // Count/join explicit preparation before returning controlled availability.
   Future<AudioProviderAvailability> prepare(String locale) async {
-    // Given explicit model preparation and its exact locale.
-    // When preparation is counted and a controlled delay completes.
     prepares++;
-    if (!prepareEntered.isCompleted) prepareEntered.complete();
-    if (prepareGate != null) await prepareGate!.future;
+    if (!prepareEntered.isCompleted) {
+      prepareEntered.complete();
+    }
+    if (prepareGate != null) {
+      await prepareGate!.future;
+    }
     ready = AudioProviderState.available;
     final result = await availability(locale);
-    // Then only explicit preparation establishes available model state.
     expect(prepares, greaterThan(0));
     expect(result.state, AudioProviderState.available);
     return result;
   }
 
   @override
+  // Retain exact saved input and return controlled Unicode text or actual configured failure.
   Future<AudioProviderTranscript> transcribe(
     AudioTranscriptionInput input,
   ) async {
-    // Given exact saved input with immutable original provenance.
     expect(input.bytes, orderedEquals(_wave()));
-    // When recognition retains input and optionally waits or reports an actual failure.
     inputs.add(input);
-    if (!asrEntered.isCompleted) asrEntered.complete();
-    if (asrGate != null) await asrGate!.future;
-    if (asrError != null) throw asrError!;
+    if (!asrEntered.isCompleted) {
+      asrEntered.complete();
+    }
+    if (asrGate != null) {
+      await asrGate!.future;
+    }
+    if (asrError != null) {
+      throw asrError!;
+    }
     final result = AudioProviderTranscript(text: text);
-    // Then exact Unicode/whitespace reaches the report unchanged.
     expect(result.text, text);
     expect(inputs.last, same(input));
     return result;
   }
 
   @override
+  // Count cleanup and apply the configured release/failure outcome.
   Future<void> cancel() async {
-    // Given owned readiness/preparation/ASR and optional real cleanup failure.
-    // When cancellation is counted and controlled native gates are released as configured.
     transcriptionCancels++;
     if (releaseOnCancel) {
       for (final gate in [probeGate, prepareGate, asrGate]) {
-        if (gate != null && !gate.isCompleted) gate.complete();
+        if (gate != null && !gate.isCompleted) {
+          gate.complete();
+        }
       }
     }
     if (cancelError != null) {
@@ -579,7 +772,6 @@ final class _Provider
         cancelStack ?? StackTrace.current,
       );
     }
-    // Then cleanup is observable and release settles all matching controlled provider gates.
     expect(transcriptionCancels, greaterThan(0));
     if (releaseOnCancel) {
       expect(
@@ -594,11 +786,9 @@ final class _Provider
   }
 
   @override
+  // Observe terminal disposal of the shared provider instance.
   Future<void> dispose() async {
-    // Given explicit provider ownership by a composition owner.
-    // When its one terminal disposal is counted.
     disposals++;
-    // Then shared runtime/transcriber ownership disposes the same instance once.
     expect(disposals, 1);
   }
 }
@@ -615,89 +805,93 @@ final class _Store implements LocalCaptureStore {
   int imports = 0;
   int documentWrites = 0;
   @override
+  // Delegate counted/held import to real storage and check exact returned provenance.
   Future<CaptureMaterialReference> saveMaterial({
     required Uint8List bytes,
     required String mediaType,
     required DateTime capturedAt,
     String? originalName,
   }) async {
-    // Given exact WAV and existing actual FileCaptureStore.
     final snapshot = Uint8List.fromList(bytes);
     expect(snapshot, orderedEquals(_wave()));
-    // When import is counted, optionally held/failed and durably delegated.
     imports++;
-    if (!saveEntered.isCompleted) saveEntered.complete();
-    if (saveGate != null) await saveGate!.future;
-    if (importError != null) throw importError!;
+    if (!saveEntered.isCompleted) {
+      saveEntered.complete();
+    }
+    if (saveGate != null) {
+      await saveGate!.future;
+    }
+    if (importError != null) {
+      throw importError!;
+    }
     final reference = await delegate.saveMaterial(
       bytes: snapshot,
       mediaType: mediaType,
       capturedAt: capturedAt,
       originalName: originalName,
     );
-    // Then returned provenance refers to exact durable bytes before publication.
     expect(await delegate.readMaterial(reference), orderedEquals(snapshot));
     expect(reference.capturedAt, capturedAt);
     return reference;
   }
 
   @override
+  // Apply the controlled read gate/fault before real original-byte IO.
   Future<Uint8List> readMaterial(CaptureMaterialReference reference) async {
-    // Given one unchanged saved original and optional actual read failure.
-    // When IO is optionally held and delegated without an import.
-    if (!readEntered.isCompleted) readEntered.complete();
-    if (readGate != null) await readGate!.future;
-    if (readError != null) throw readError!;
+    if (!readEntered.isCompleted) {
+      readEntered.complete();
+    }
+    if (readGate != null) {
+      await readGate!.future;
+    }
+    if (readError != null) {
+      throw readError!;
+    }
     final bytes = await delegate.readMaterial(reference);
-    // Then real original bytes satisfy the immutable reference length.
     expect(bytes.length, reference.byteLength);
     return bytes;
   }
 
   @override
+  // Count explicit opaque document writes and check their real disk roundtrip.
   Future<void> saveDocument(
     String collection,
     String id,
     Map<String, Object?> document,
   ) async {
-    // Given an owner's explicit domain-independent opaque document Save.
-    // When the existing store durably writes the exact document.
     documentWrites++;
     await delegate.saveDocument(collection, id, document);
-    // Then actual disk roundtrip retains the complete caller payload.
     expect(await delegate.readDocument(collection, id), document);
   }
 
   @override
+  // Read the exact logical document, preserving null absence.
   Future<Map<String, Object?>?> readDocument(
     String collection,
     String id,
   ) async {
-    // Given a caller-selected logical document identity.
-    // When the existing store reads that opaque document.
     final value = await delegate.readDocument(collection, id);
-    // Then absence is null and an existing document preserves string JSON keys.
     expect(value, anyOf(isNull, isA<Map<String, Object?>>()));
     return value;
   }
 
   @override
+  // Delegate identity listing and check sorted output.
   Future<List<String>> listDocumentIds(String collection) async {
-    // Given a caller-selected opaque collection.
-    // When the existing store lists durable identities.
     final ids = await delegate.listDocumentIds(collection);
-    // Then IDs are sorted and no fixture-specific storage contract is introduced.
     expect(ids, orderedEquals(List<String>.of(ids)..sort()));
     return ids;
   }
 }
 
+// Compose borrowed panels with the same caller admission and inherited scale.
 Widget _root(
   AudioCaptureController controller, {
   ValueChanged<AudioTranscriptReview>? onChanged,
   AudioCaptureController? transcriptController,
   SettingsView? settings,
   double scale = 1,
+  bool Function()? interactionAllowed,
 }) => MaterialApp(
   builder: (context, child) {
     final content = MediaQuery(
@@ -723,11 +917,13 @@ Widget _root(
               key: const ValueKey('audio-panel'),
               controller: controller,
               onReviewChanged: onChanged,
+              interactionAllowed: interactionAllowed,
             ),
             TranscriptReviewPanel(
               key: const ValueKey('transcript-panel'),
               controller: transcriptController ?? controller,
               onReviewChanged: onChanged,
+              interactionAllowed: interactionAllowed,
             ),
           ],
         ),
@@ -736,12 +932,11 @@ Widget _root(
   ),
 );
 
+// Reveal/tap a current enabled production control in its required event zone.
 Future<void> _tap(WidgetTester tester, String key) async {
-  // Given a visible keyed actual primary control in the mounted shared panels.
   final finder = find.byKey(ValueKey(key));
   expect(finder, findsOneWidget);
   await tester.ensureVisible(finder);
-  // When explicit user intent taps that enabled button and rebuilds presentation.
   expect(tester.widget<ElevatedButton>(finder).onPressed, isNotNull);
   if (key == 'audio-capture-record' || key == 'audio-capture-cancel') {
     await tester.tap(finder);
@@ -749,20 +944,17 @@ Future<void> _tap(WidgetTester tester, String key) async {
     await tester.runAsync(() => tester.tap(finder));
   }
   await tester.pump();
-  // Then the real widget action completes its synchronous dispatch without a UI exception.
   expect(tester.takeException(), isNull);
 }
 
+// Bound frame/event turns while joining an actual controlled operation.
 Future<void> _pumpUntil(WidgetTester tester, bool Function() condition) async {
-  // Given a finite awaited observable state change whose IO uses real FileCaptureStore.
-  // When bounded real-event turns and Flutter frames let the actual operation settle.
   for (var turn = 0; turn < 80 && !condition(); turn++) {
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 5)),
     );
     await tester.pump();
   }
-  // Then the selected operation actually reached its required observable state.
   expect(condition(), isTrue);
   expect(tester.takeException(), isNull);
 }

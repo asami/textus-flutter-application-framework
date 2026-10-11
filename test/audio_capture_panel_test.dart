@@ -26,6 +26,354 @@ void main() {
       expect(h.provider.disposals, 0);
     });
 
+    for (final action in [
+      'record',
+      'check-transcription',
+      'stop',
+      'cancel',
+      'retry-save',
+      'play',
+      'stop-playback',
+      'transcribe',
+      'prepare-model',
+      'cancel-transcription',
+    ]) {
+      testWidgets(
+        'G2 $action reevaluates live admission before any controller effect',
+        (tester) async {
+          // Given the exact controller state exposing this admitted production action.
+          Future<void>? playback;
+          Future<void>? recognition;
+          if (action == 'stop' || action == 'cancel') {
+            await tester.runAsync(h.controller.startRecording);
+          } else if (action == 'retry-save') {
+            h.store.importError = const FileSystemException(
+              'held import failure',
+            );
+            await tester.runAsync(() async {
+              // Given actual capture with a failing durable import.
+              // When stop is attempted, observe the expected retained error.
+              await expectLater(
+                h.capture(),
+                throwsA(same(h.store.importError)),
+              );
+              // Then pending original bytes are available for an explicit retry.
+              expect(h.facade.pendingOriginal, isNotNull);
+            });
+            h.store.importError = null;
+          } else if ([
+            'play',
+            'stop-playback',
+            'transcribe',
+            'cancel-transcription',
+          ].contains(action)) {
+            await tester.runAsync(h.capture);
+          }
+          if (action == 'prepare-model') {
+            h.provider.ready = AudioProviderState.downloadable;
+            await tester.runAsync(h.controller.refreshAvailability);
+          } else if (action == 'stop-playback') {
+            h.provider.playGate = Completer<void>();
+            await tester.runAsync(() async {
+              // Given exact saved bytes and held playback.
+              // When the owner starts playback, observe its expected cancellation immediately.
+              playback = expectLater(
+                h.controller.playOriginal(),
+                throwsStateError,
+              );
+              // Then the explicit stop below must reject the original with StateError.
+              expect(h.controller.busy, isTrue);
+            });
+            await _pumpUntil(tester, () => h.provider.playEntered.isCompleted);
+          } else if (action == 'cancel-transcription') {
+            h.provider.asrGate = Completer<void>();
+            await tester.runAsync(() async {
+              // Given a saved original and held real inference.
+              // When recognition starts, observe its expected cancellation immediately.
+              recognition = expectLater(
+                h.controller.transcribe(),
+                throwsStateError,
+              );
+              // Then the explicit cancellation below must reject the original with StateError.
+              expect(h.controller.canCancelTranscription, isTrue);
+            });
+            await _pumpUntil(tester, () => h.provider.asrEntered.isCompleted);
+          }
+          var allowed = true;
+          var policyThrows = false;
+          bool policy() {
+            // Return the current caller admission or its configured evaluation failure.
+            if (policyThrows) {
+              throw StateError('caller admission failed');
+            }
+            // Successful evaluation reports user admission only.
+            return allowed;
+          }
+
+          final callbacks = <AudioTranscriptReview>[];
+          await tester.pumpWidget(
+            _root(
+              h.controller,
+              onChanged: callbacks.add,
+              interactionAllowed: policy,
+            ),
+          );
+          final finder = find.byKey(ValueKey('audio-capture-$action'));
+          final captured = tester.widget<ElevatedButton>(finder).onPressed!;
+          final before = _effects(h);
+          final review = h.controller.review;
+          final state = h.controller.state;
+          final error = h.controller.error;
+          // When the policy flips without pumping, the captured callback is denied.
+          allowed = false;
+          captured();
+          // Then no controller, readiness, capture, playback, cancellation or storage effect occurs.
+          expect(_effects(h), before);
+          expect(h.controller.review, same(review));
+          expect(h.controller.state, state);
+          expect(h.controller.error, same(error));
+          expect(callbacks, isEmpty);
+          // When the policy throws, that same callback fails closed before action.
+          allowed = true;
+          policyThrows = true;
+          captured();
+          // Then a failed evaluation still produces no effect or outward exception.
+          expect(_effects(h), before);
+          expect(tester.takeException(), isNull);
+          // When built under false, its visible action is disabled without starting IO.
+          policyThrows = false;
+          allowed = false;
+          await tester.pumpWidget(
+            _root(
+              h.controller,
+              onChanged: callbacks.add,
+              interactionAllowed: policy,
+            ),
+          );
+          // Then the same control stays visible and construction is inert.
+          expect(tester.widget<ElevatedButton>(finder).onPressed, isNull);
+          expect(_effects(h), before);
+          // When reenabled without a rebuild, the original current-generation action is explicit.
+          allowed = true;
+          await tester.runAsync(() async {
+            // Given the current owner and its original captured command.
+            // When explicit intent is admitted in the real IO event zone.
+            captured();
+            // Then dispatch is safe before its observable asynchronous settlement.
+            expect(tester.takeException(), isNull);
+          });
+          await _pumpUntil(
+            tester,
+            () => action == 'record'
+                ? h.controller.recordingStarted
+                : !h.controller.busy,
+          );
+          if (playback != null) {
+            await tester.runAsync(() => playback!);
+          }
+          if (recognition != null) {
+            await tester.runAsync(() => recognition!);
+          }
+          // Then a real action occurred once, and the widget never disposed the borrowed provider.
+          expect(_effects(h), isNot(before));
+          expect(h.provider.disposals, 0);
+          if (action == 'record') {
+            await tester.runAsync(h.controller.cancelRecording);
+          }
+          await tester.pumpWidget(const SizedBox.shrink());
+        },
+      );
+    }
+
+    for (final operation in ['stop', 'transcribe']) {
+      for (final fails in [false, true]) {
+        testWidgets(
+          'G3 accepted $operation failure=$fails settles while user admission is false',
+          (tester) async {
+            // Given the current production panel and a held durable stop or saved-input ASR outcome.
+            var allowed = true;
+            final callbacks = <AudioTranscriptReview>[];
+            if (operation == 'stop') {
+              await tester.runAsync(h.controller.startRecording);
+              h.store.saveGate = Completer<void>();
+              if (fails) {
+                h.store.importError = const FileSystemException(
+                  'accepted import failure',
+                );
+              }
+            } else {
+              await tester.runAsync(h.capture);
+              h.provider.asrGate = Completer<void>();
+              if (fails) {
+                h.provider.asrError = AudioProviderException(
+                  'actualFailure',
+                  'accepted ASR failure',
+                );
+              }
+            }
+            await tester.pumpWidget(
+              _root(
+                h.controller,
+                onChanged: callbacks.add,
+                interactionAllowed: () => allowed,
+              ),
+            );
+            // When the real UI admits the command and then its caller suspends new user intent.
+            await _tap(tester, 'audio-capture-$operation');
+            await _pumpUntil(
+              tester,
+              () => operation == 'stop'
+                  ? h.store.saveEntered.isCompleted
+                  : h.provider.asrEntered.isCompleted,
+            );
+            allowed = false;
+            await tester.pumpWidget(
+              _root(
+                h.controller,
+                onChanged: callbacks.add,
+                interactionAllowed: () => allowed,
+              ),
+            );
+            if (operation == 'stop') {
+              h.store.saveGate!.complete();
+            } else {
+              h.provider.asrGate!.complete();
+            }
+            await _pumpUntil(tester, () => !h.controller.busy);
+            // Then accepted original/report/error remains actual and the current owner receives its result exactly once.
+            expect(h.provider.disposals, 0);
+            expect(
+              h.provider.recordingCancels + h.provider.transcriptionCancels,
+              0,
+            );
+            expect(h.controller.isDetached, isFalse);
+            expect(h.store.imports, 1);
+            if (operation == 'stop' && fails) {
+              expect(callbacks, isEmpty);
+              expect(h.facade.pendingOriginal, isNotNull);
+              expect(h.controller.error, same(h.store.importError));
+            } else {
+              expect(callbacks, [h.controller.review]);
+              expect(h.controller.review!.original.durationMilliseconds, 1000);
+              if (operation == 'transcribe') {
+                expect(
+                  h.controller.review!.reports.single.status,
+                  fails
+                      ? AudioTranscriptStatus.failed
+                      : AudioTranscriptStatus.success,
+                );
+              }
+            }
+            expect(tester.takeException(), isNull);
+            await tester.pumpWidget(const SizedBox.shrink());
+          },
+        );
+      }
+    }
+
+    for (final retirement in ['replace', 'round-trip', 'unmount']) {
+      testWidgets(
+        'G5 audio $retirement denies old command before microphone or readiness',
+        (tester) async {
+          // Given owner A and its actual rendered record/readiness callbacks.
+          final other = AudioCaptureController(facade: h.facade);
+          final callbacks = <AudioTranscriptReview>[];
+          await tester.pumpWidget(
+            _root(h.controller, onChanged: callbacks.add),
+          );
+          final actions = [
+            for (final suffix in ['record', 'check-transcription'])
+              tester
+                  .widget<ElevatedButton>(
+                    find.byKey(ValueKey('audio-capture-$suffix')),
+                  )
+                  .onPressed!,
+          ];
+          // When the owner is replaced, round-tripped to A or unmounted.
+          if (retirement == 'unmount') {
+            await tester.pumpWidget(const SizedBox.shrink());
+          } else {
+            await tester.pumpWidget(_root(other, onChanged: callbacks.add));
+            if (retirement == 'round-trip') {
+              await tester.pumpWidget(
+                _root(h.controller, onChanged: callbacks.add),
+              );
+            }
+          }
+          for (final action in actions) {
+            // Given the callback captured before owner retirement.
+            // When it is invoked, it has no current generation authority.
+            action();
+            // Then the provider has not started recording or probed readiness.
+            expect(h.provider.starts + h.provider.probes, 0);
+          }
+          // Then neither old nor new owner receives an operation or revision result.
+          expect(h.controller.busy, isFalse);
+          expect(other.busy, isFalse);
+          expect(callbacks, isEmpty);
+          expect(h.store.imports, 0);
+          await tester.pumpWidget(const SizedBox.shrink());
+          other.dispose();
+        },
+      );
+    }
+
+    testWidgets(
+      'G6 false gate keeps scaled audio and transcript controls visible without IO',
+      (tester) async {
+        // Given a saved original and dirty draft at 320px with inherited scale two.
+        await tester.runAsync(h.capture);
+        h.controller.setDraftText(' retained 📘 ');
+        tester.view.devicePixelRatio = 1;
+        tester.view.physicalSize = const Size(320, 700);
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final settings = _Settings();
+        final view = SettingsView.fromService(service: settings);
+        final before = _effects(h);
+        await tester.pumpWidget(
+          _root(
+            h.controller,
+            settings: view,
+            scale: 2,
+            interactionAllowed: () => false,
+          ),
+        );
+        // Enumerate the actual disabled controls in the scaled caller scrollable.
+        for (final key in [
+          'audio-capture-play',
+          'audio-capture-transcribe',
+          'audio-capture-check-transcription',
+          'transcript-review-record-correction',
+        ]) {
+          // Given the finder for the current visible denied command.
+          final finder = find.byKey(ValueKey(key));
+          await tester.ensureVisible(finder);
+          // Then the visible control has no admitted gesture callback.
+          expect(tester.widget<ElevatedButton>(finder).onPressed, isNull);
+          // When the actual disabled control is tapped.
+          await tester.tap(finder);
+          await tester.pump();
+          // Then it stays reachable without IO or layout failure.
+          expect(finder.hitTestable(), findsOneWidget);
+          expect(_effects(h), before);
+          expect(tester.takeException(), isNull);
+        }
+        // Then exact dirty text stays readable but disabled and inherited scaling is retained.
+        final field = find.byKey(const ValueKey('transcript-review-text'));
+        expect(tester.widget<TextField>(field).enabled, isFalse);
+        expect(
+          tester.widget<TextField>(field).controller!.text,
+          ' retained 📘 ',
+        );
+        expect(MediaQuery.textScalerOf(tester.element(field)).scale(16), 32);
+        expect(h.controller.hasUnsavedText, isTrue);
+        await tester.pumpWidget(const SizedBox.shrink());
+        view.dispose();
+        settings.dispose();
+      },
+    );
+
     testWidgets(
       'W1 actual two-panel record transcribe correction save reopen replay',
       (tester) async {
@@ -334,10 +682,9 @@ final class _Harness {
   late AudioCaptureFacade facade;
   late AudioCaptureController controller;
 
+  // Compose real private storage and controlled borrowed providers without capture or inference.
   Future<void> open() async {
-    // Given a fresh test-owned directory and inert controlled provider.
     directory = await Directory.systemTemp.createTemp('tfaf-audio-');
-    // When real FileCaptureStore, Core service and borrowed interaction are composed.
     store = _Store(FileCaptureStore(directory.path));
     service = AudioCaptureService(
       runtime: provider,
@@ -347,7 +694,6 @@ final class _Harness {
     );
     facade = AudioCaptureFacade(service: service);
     controller = AudioCaptureController(facade: facade, now: () => _time);
-    // Then construction has no capture, inference, preparation or durable-write effects.
     expect(
       provider.starts +
           provider.probes +
@@ -359,9 +705,8 @@ final class _Harness {
     expect(await directory.exists(), isTrue);
   }
 
+  // Drain the fixture controller before disposing Core and removing its own directory.
   Future<void> close() async {
-    // Given the test-owned controller/service and directory with settled gates.
-    // When composition explicitly detaches, disposes Core and removes its files.
     try {
       await controller.detach();
     } catch (error) {
@@ -370,19 +715,16 @@ final class _Harness {
     controller.dispose();
     await service.dispose();
     await directory.delete(recursive: true);
-    // Then provider ownership was never transferred and the fixture is terminal.
     expect(provider.disposals, 0);
     expect(await directory.exists(), isFalse);
     expect(controller.isDisposed, isTrue);
   }
 
+  // Explicitly record and durably import the exact controlled WAV; check bytes and provenance.
   Future<AudioTranscriptReview> capture() async {
-    // Given an idle empty interaction and exact one-second controlled WAV.
     expect(controller.review, isNull);
-    // When capture starts and explicitly stops through real durable import.
     await controller.startRecording();
     final review = await controller.stopRecording();
-    // Then exact bytes and original provenance exist before review success.
     expect(
       await store.delegate.readMaterial(review.original.material),
       orderedEquals(_wave()),
@@ -431,78 +773,85 @@ final class _Provider
   bool get isSupported => supported;
 
   @override
+  // Count explicit microphone starts and apply the configured gate or fault.
   Future<void> startRecording(AudioRecordingConfiguration configuration) async {
-    // Given an explicit caller-owned duration configuration.
     expect(configuration.maxDurationSeconds, inInclusiveRange(1, 120));
-    // When controlled start is counted, held or actually denied.
     starts++;
     receivedConfiguration = configuration;
-    if (!startEntered.isCompleted) startEntered.complete();
-    if (startGate != null) await startGate!.future;
-    if (startError != null) throw startError!;
-    // Then successful permission/capture start preserves the exact configuration instance.
+    if (!startEntered.isCompleted) {
+      startEntered.complete();
+    }
+    if (startGate != null) {
+      await startGate!.future;
+    }
+    if (startError != null) {
+      throw startError!;
+    }
     expect(receivedConfiguration, same(configuration));
   }
 
   @override
+  // Return the exact controlled WAV and capture time for an explicit stop.
   Future<CapturedAudio> stopRecording() async {
-    // Given a previously explicit microphone start.
     expect(starts, greaterThan(0));
-    // When explicit stop returns canonical original bytes.
     stops++;
     final captured = CapturedAudio(
       bytes: _wave(),
       capturedAt: _time,
       originalName: 'source.wav',
     );
-    // Then stop returns the exact WAV and timestamp without a second start.
     expect(captured.bytes, orderedEquals(_wave()));
     expect(captured.capturedAt, _time);
     return captured;
   }
 
   @override
+  // Count cancellation and release the pending start gate.
   Future<void> cancelRecording() async {
-    // Given owned unsaved recording or a pending permission start.
-    // When explicit cleanup unblocks that start and records cancellation.
     recordingCancels++;
-    if (startGate != null && !startGate!.isCompleted) startGate!.complete();
-    // Then the caller can observe cleanup and no new capture is launched.
+    if (startGate != null && !startGate!.isCompleted) {
+      startGate!.complete();
+    }
     expect(recordingCancels, greaterThan(0));
     expect(startGate == null || startGate!.isCompleted, isTrue);
   }
 
   @override
+  // Snapshot supplied original bytes and hold playback only when configured.
   Future<void> play(Uint8List bytes) async {
-    // Given exact saved original bytes delivered by real Core IO.
     expect(bytes, orderedEquals(_wave()));
-    // When controlled playback snapshots input and optionally holds completion.
     played.add(Uint8List.fromList(bytes));
-    if (!playEntered.isCompleted) playEntered.complete();
-    if (playGate != null) await playGate!.future;
-    // Then playback retains exact supplied bytes without import/capture work.
+    if (!playEntered.isCompleted) {
+      playEntered.complete();
+    }
+    if (playGate != null) {
+      await playGate!.future;
+    }
     expect(played.last, orderedEquals(bytes));
   }
 
   @override
+  // Count playback cleanup and release its controlled gate.
   Future<void> stopPlayback() async {
-    // Given an owned playback cleanup request, possibly during its original read.
-    // When explicit cleanup unblocks pending runtime playback.
     playStops++;
-    if (playGate != null && !playGate!.isCompleted) playGate!.complete();
-    // Then cleanup is observable and held playback can settle.
+    if (playGate != null && !playGate!.isCompleted) {
+      playGate!.complete();
+    }
     expect(playStops, greaterThan(0));
     expect(playGate == null || playGate!.isCompleted, isTrue);
   }
 
   @override
+  // Record locale/readiness observation and apply its finite controlled gate.
   Future<AudioProviderAvailability> availability(String locale) async {
-    // Given actual controlled readiness for the exact requested locale.
-    // When explicit readiness work is counted and optionally held.
     probes++;
     locales.add(locale);
-    if (!probeEntered.isCompleted) probeEntered.complete();
-    if (probeGate != null) await probeGate!.future;
+    if (!probeEntered.isCompleted) {
+      probeEntered.complete();
+    }
+    if (probeGate != null) {
+      await probeGate!.future;
+    }
     final value = AudioProviderAvailability(
       providerId: id,
       locale: locale,
@@ -511,7 +860,6 @@ final class _Provider
           ? null
           : 'actual readiness reason',
     );
-    // Then readiness retains exact provider/locale and cannot synthesize inference text.
     expect(value.providerId, id);
     expect(value.locale, locale);
     expect(inputs.length, lessThanOrEqualTo(probes));
@@ -519,46 +867,53 @@ final class _Provider
   }
 
   @override
+  // Count explicit preparation, join its gate and return controlled availability.
   Future<AudioProviderAvailability> prepare(String locale) async {
-    // Given explicit model preparation and its exact locale.
-    // When preparation is counted and a controlled delay completes.
     prepares++;
-    if (!prepareEntered.isCompleted) prepareEntered.complete();
-    if (prepareGate != null) await prepareGate!.future;
+    if (!prepareEntered.isCompleted) {
+      prepareEntered.complete();
+    }
+    if (prepareGate != null) {
+      await prepareGate!.future;
+    }
     ready = AudioProviderState.available;
     final result = await availability(locale);
-    // Then only explicit preparation establishes available model state.
     expect(prepares, greaterThan(0));
     expect(result.state, AudioProviderState.available);
     return result;
   }
 
   @override
+  // Retain exact saved input and return controlled text or the configured actual fault.
   Future<AudioProviderTranscript> transcribe(
     AudioTranscriptionInput input,
   ) async {
-    // Given exact saved input with immutable original provenance.
     expect(input.bytes, orderedEquals(_wave()));
-    // When recognition retains input and optionally waits or reports an actual failure.
     inputs.add(input);
-    if (!asrEntered.isCompleted) asrEntered.complete();
-    if (asrGate != null) await asrGate!.future;
-    if (asrError != null) throw asrError!;
+    if (!asrEntered.isCompleted) {
+      asrEntered.complete();
+    }
+    if (asrGate != null) {
+      await asrGate!.future;
+    }
+    if (asrError != null) {
+      throw asrError!;
+    }
     final result = AudioProviderTranscript(text: text);
-    // Then exact Unicode/whitespace reaches the report unchanged.
     expect(result.text, text);
     expect(inputs.last, same(input));
     return result;
   }
 
   @override
+  // Count transcription cleanup and release configured gates or report the configured fault.
   Future<void> cancel() async {
-    // Given owned readiness/preparation/ASR and optional real cleanup failure.
-    // When cancellation is counted and controlled native gates are released as configured.
     transcriptionCancels++;
     if (releaseOnCancel) {
       for (final gate in [probeGate, prepareGate, asrGate]) {
-        if (gate != null && !gate.isCompleted) gate.complete();
+        if (gate != null && !gate.isCompleted) {
+          gate.complete();
+        }
       }
     }
     if (cancelError != null) {
@@ -567,7 +922,6 @@ final class _Provider
         cancelStack ?? StackTrace.current,
       );
     }
-    // Then cleanup is observable and release settles all matching controlled provider gates.
     expect(transcriptionCancels, greaterThan(0));
     if (releaseOnCancel) {
       expect(
@@ -582,11 +936,9 @@ final class _Provider
   }
 
   @override
+  // Observe terminal provider disposal; shared borrowed ownership must not duplicate it.
   Future<void> dispose() async {
-    // Given explicit provider ownership by a composition owner.
-    // When its one terminal disposal is counted.
     disposals++;
-    // Then shared runtime/transcriber ownership disposes the same instance once.
     expect(disposals, 1);
   }
 }
@@ -602,90 +954,96 @@ final class _Store implements LocalCaptureStore {
   final readEntered = Completer<void>();
   int imports = 0;
   int documentWrites = 0;
+  int materialReads = 0;
   @override
+  // Count/hold/fail durable import while delegating exact bytes and provenance to real storage.
   Future<CaptureMaterialReference> saveMaterial({
     required Uint8List bytes,
     required String mediaType,
     required DateTime capturedAt,
     String? originalName,
   }) async {
-    // Given exact WAV and existing actual FileCaptureStore.
     final snapshot = Uint8List.fromList(bytes);
     expect(snapshot, orderedEquals(_wave()));
-    // When import is counted, optionally held/failed and durably delegated.
     imports++;
-    if (!saveEntered.isCompleted) saveEntered.complete();
-    if (saveGate != null) await saveGate!.future;
-    if (importError != null) throw importError!;
+    if (!saveEntered.isCompleted) {
+      saveEntered.complete();
+    }
+    if (saveGate != null) {
+      await saveGate!.future;
+    }
+    if (importError != null) {
+      throw importError!;
+    }
     final reference = await delegate.saveMaterial(
       bytes: snapshot,
       mediaType: mediaType,
       capturedAt: capturedAt,
       originalName: originalName,
     );
-    // Then returned provenance refers to exact durable bytes before publication.
     expect(await delegate.readMaterial(reference), orderedEquals(snapshot));
     expect(reference.capturedAt, capturedAt);
     return reference;
   }
 
   @override
+  // Count original reads and apply the read gate/fault before real filesystem delegation.
   Future<Uint8List> readMaterial(CaptureMaterialReference reference) async {
-    // Given one unchanged saved original and optional actual read failure.
-    // When IO is optionally held and delegated without an import.
-    if (!readEntered.isCompleted) readEntered.complete();
-    if (readGate != null) await readGate!.future;
-    if (readError != null) throw readError!;
+    materialReads++;
+    if (!readEntered.isCompleted) {
+      readEntered.complete();
+    }
+    if (readGate != null) {
+      await readGate!.future;
+    }
+    if (readError != null) {
+      throw readError!;
+    }
     final bytes = await delegate.readMaterial(reference);
-    // Then real original bytes satisfy the immutable reference length.
     expect(bytes.length, reference.byteLength);
     return bytes;
   }
 
   @override
+  // Count exact opaque document writes and check their real disk roundtrip.
   Future<void> saveDocument(
     String collection,
     String id,
     Map<String, Object?> document,
   ) async {
-    // Given an owner's explicit domain-independent opaque document Save.
-    // When the existing store durably writes the exact document.
     documentWrites++;
     await delegate.saveDocument(collection, id, document);
-    // Then actual disk roundtrip retains the complete caller payload.
     expect(await delegate.readDocument(collection, id), document);
   }
 
   @override
+  // Read the selected opaque document and retain absence as null.
   Future<Map<String, Object?>?> readDocument(
     String collection,
     String id,
   ) async {
-    // Given a caller-selected logical document identity.
-    // When the existing store reads that opaque document.
     final value = await delegate.readDocument(collection, id);
-    // Then absence is null and an existing document preserves string JSON keys.
     expect(value, anyOf(isNull, isA<Map<String, Object?>>()));
     return value;
   }
 
   @override
+  // Delegate durable identity listing and check its sorted output.
   Future<List<String>> listDocumentIds(String collection) async {
-    // Given a caller-selected opaque collection.
-    // When the existing store lists durable identities.
     final ids = await delegate.listDocumentIds(collection);
-    // Then IDs are sorted and no fixture-specific storage contract is introduced.
     expect(ids, orderedEquals(List<String>.of(ids)..sort()));
     return ids;
   }
 }
 
+// Compose both borrowed panels, caller admission and inherited scaling in a scrollable host.
 Widget _root(
   AudioCaptureController controller, {
   ValueChanged<AudioTranscriptReview>? onChanged,
   AudioCaptureController? transcriptController,
   SettingsView? settings,
   double scale = 1,
+  bool Function()? interactionAllowed,
 }) => MaterialApp(
   builder: (context, child) {
     final content = MediaQuery(
@@ -711,11 +1069,13 @@ Widget _root(
               key: const ValueKey('audio-panel'),
               controller: controller,
               onReviewChanged: onChanged,
+              interactionAllowed: interactionAllowed,
             ),
             TranscriptReviewPanel(
               key: const ValueKey('transcript-panel'),
               controller: transcriptController ?? controller,
               onReviewChanged: onChanged,
+              interactionAllowed: interactionAllowed,
             ),
           ],
         ),
@@ -724,12 +1084,11 @@ Widget _root(
   ),
 );
 
+// Reveal and tap an enabled production control in its required event zone.
 Future<void> _tap(WidgetTester tester, String key) async {
-  // Given a visible keyed actual primary control in the mounted shared panels.
   final finder = find.byKey(ValueKey(key));
   expect(finder, findsOneWidget);
   await tester.ensureVisible(finder);
-  // When explicit user intent taps that enabled button and rebuilds presentation.
   expect(tester.widget<ElevatedButton>(finder).onPressed, isNotNull);
   if (key == 'audio-capture-record' || key == 'audio-capture-cancel') {
     await tester.tap(finder);
@@ -737,22 +1096,40 @@ Future<void> _tap(WidgetTester tester, String key) async {
     await tester.runAsync(() => tester.tap(finder));
   }
   await tester.pump();
-  // Then the real widget action completes its synchronous dispatch without a UI exception.
   expect(tester.takeException(), isNull);
 }
 
+// Join bounded real event turns/frames and check the selected observable state.
 Future<void> _pumpUntil(WidgetTester tester, bool Function() condition) async {
-  // Given a finite awaited observable state change whose IO uses real FileCaptureStore.
-  // When bounded real-event turns and Flutter frames let the actual operation settle.
   for (var turn = 0; turn < 80 && !condition(); turn++) {
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 5)),
     );
     await tester.pump();
   }
-  // Then the selected operation actually reached its required observable state.
   expect(condition(), isTrue);
   expect(tester.takeException(), isNull);
+}
+
+// Snapshot separate provider and filesystem command counters for admission assertions.
+List<int> _effects(_Harness h) {
+  final values = [
+    h.provider.starts,
+    h.provider.stops,
+    h.provider.recordingCancels,
+    h.provider.played.length,
+    h.provider.playStops,
+    h.provider.probes,
+    h.provider.prepares,
+    h.provider.inputs.length,
+    h.provider.transcriptionCancels,
+    h.provider.disposals,
+    h.store.imports,
+    h.store.materialReads,
+    h.store.documentWrites,
+  ];
+  expect(values.every((value) => value >= 0), isTrue);
+  return values;
 }
 
 final class _Settings extends ChangeNotifier implements SettingsService {

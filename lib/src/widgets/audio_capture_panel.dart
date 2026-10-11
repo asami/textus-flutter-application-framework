@@ -10,6 +10,7 @@ class AudioCapturePanel extends StatefulWidget {
   const AudioCapturePanel({
     required this.controller,
     this.onReviewChanged,
+    this.interactionAllowed,
     super.key,
   });
 
@@ -18,6 +19,11 @@ class AudioCapturePanel extends StatefulWidget {
 
   /// Receives durable stop/retry or recognition success from the start-time owner.
   final ValueChanged<AudioTranscriptReview>? onReviewChanged;
+
+  /// Borrowed pure caller admission, evaluated again at each user command.
+  /// Null preserves controller rules; false or a thrown evaluation denies entry.
+  /// Already admitted work still settles under its original owner fences.
+  final bool Function()? interactionAllowed;
 
   @override
   State<AudioCapturePanel> createState() => _AudioCapturePanelState();
@@ -29,15 +35,41 @@ class _AudioCapturePanelState extends State<AudioCapturePanel> {
   @override
   void didUpdateWidget(AudioCapturePanel oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!identical(oldWidget.controller, widget.controller)) _generation++;
+    if (!identical(oldWidget.controller, widget.controller)) {
+      _generation++;
+    }
+  }
+
+  bool _allows(AudioCaptureController controller, int generation) {
+    // Given a callback's render-time owner and generation.
+    // When entry is requested, reject stale or terminal ownership before policy.
+    if (!mounted ||
+        generation != _generation ||
+        !identical(controller, widget.controller) ||
+        controller.isDetached ||
+        controller.isDisposed) {
+      return false;
+    }
+    try {
+      // Then only the current pure caller policy can admit this user command.
+      return widget.interactionAllowed?.call() ?? true;
+    } catch (_) {
+      // Then a policy failure denies entry without launching controller work.
+      return false;
+    }
   }
 
   Future<void> _run(
     AudioCaptureController controller,
+    int generation,
     Future<Object?> Function() action, {
     bool report = false,
   }) async {
-    final generation = _generation;
+    // Given the owner captured when this action was rendered.
+    // When user intent arrives, check live admission before any action effects.
+    if (!_allows(controller, generation)) {
+      return;
+    }
     final callback = widget.onReviewChanged;
     Object? result;
     try {
@@ -45,6 +77,8 @@ class _AudioCapturePanelState extends State<AudioCapturePanel> {
     } catch (_) {
       return;
     } // Controller retains the actual failure for presentation.
+    // Then accepted work publishes only to its original live owner, even if
+    // the caller temporarily denies further user commands during settlement.
     if (report &&
         result is AudioTranscriptReview &&
         mounted &&
@@ -61,6 +95,10 @@ class _AudioCapturePanelState extends State<AudioCapturePanel> {
     listenable: widget.controller,
     builder: (context, _) {
       final controller = widget.controller;
+      // Given this render's borrowed owner, callbacks retain its generation.
+      final generation = _generation;
+      // When pure admission is evaluated for enabled presentation, no IO starts.
+      final interactionAllowed = _allows(controller, generation);
       final original = controller.review?.original;
       Widget button(
         String suffix,
@@ -70,8 +108,10 @@ class _AudioCapturePanelState extends State<AudioCapturePanel> {
         bool report = false,
       }) => ElevatedButton(
         key: ValueKey('audio-capture-$suffix'),
-        onPressed: allowed
-            ? () => _run(controller, action, report: report)
+        // Then bind this owner/generation to _run, which rechecks current
+        // admission when the user invokes the callback.
+        onPressed: allowed && interactionAllowed
+            ? () => _run(controller, generation, action, report: report)
             : null,
         child: Text(label),
       );

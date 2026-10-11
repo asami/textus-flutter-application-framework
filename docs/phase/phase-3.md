@@ -48,8 +48,8 @@ transport state machine.
 
 | ID | Step | Outcome | Status |
 | --- | --- | --- | --- |
-| TFAF3-01 | Core handoff and view contract | Consume accepted Core APIs and freeze configuration/state/action mapping. | accepted; exact commit pending |
-| TFAF3-02 | Common screen and composition | Implement list/detail, supported actions, summary and navigation hooks. | planned |
+| TFAF3-01 | Core handoff and view contract | Consume accepted Core APIs and freeze configuration/state/action mapping. | accepted and committed at 19998a2b188e9df2332b7389a8a523f78e1fb699 |
+| TFAF3-02 | Common screen and composition | Implement list/detail, supported actions, summary and navigation hooks. | accepted; exact commit pending |
 | TFAF3-03 | Consumer acceptance | Verify fixtures and app composition, including failure/restart presentation. | planned |
 
 ## Entry and validation
@@ -89,6 +89,13 @@ but fake UI evidence alone cannot establish upstream runtime readiness. App Phas
 UI acceptance and supplies its handoff without waiting for app Phase closure.
 
 ## Connected execution plan — 2026-10-11
+
+Current status: active. TFAF3-02 is accepted after parent complete-source intake and fresh independent protected owning Step review PASS. Actual CU3 representative passed 1; combined 30-suite host refresh passed 290 with 0 failures; lib/test analysis found no issues; final dry formatting checked 21 files with 0 changed. Its exact 29-path Step commit is pending. TFAF3-01 is accepted and committed at 19998a2b188e9df2332b7389a8a523f78e1fb699. TFAF3-03 remains planned; Phase full driver/review/release and separate App/native/Drive/server/headless gates remain pending.
+Core Phase 2 remains closed at `314b19b78fdf5eb2a5ee7922f81284a476912350`,
+with all 844 tests passing.
+
+Historical connected-plan status before the verified Step 1 commit and Step 2
+software receipt; superseded by the current status above:
 
 Current status: active; TFAF3-01 parent intake and independent protected Step
 review are complete, with its one comment-authoring blocker resolved by an
@@ -164,6 +171,10 @@ remain retained. App Phase 6.1 closure and aggregate validation stay separate.
 
 ## Actual parent post-Core consumer software receipt — 2026-10-11
 
+Historical Step 1 software/pre-review snapshot: results below remain actual;
+its pending intake/review/commit statements are superseded by subsequent Step 1
+acceptance, verified commit and the current Step 2 receipt.
+
 Receipt: tfaf3-01-consumer-validation-20261011@1. Actual parent commands after
 the accepted Core handoff passed: representative CF1 1 pass, selected 14 suites
 125 passes and lib/test analysis No issues found. All three commands exited 0.
@@ -178,6 +189,11 @@ comprehensive Phase review, complete scripts/validate-full.sh and the distinct
 release remain required. No owning Step or Phase acceptance is claimed.
 
 ## 2026-10-11 — Owning TFAF3-01 acceptance before commit
+
+Historical pre-commit snapshot: the retained acceptance and review outcomes below
+precede verified commit `19998a2b188e9df2332b7389a8a523f78e1fb699`.
+Its pending-commit/four-checkbox/later-planned statements are superseded by the
+current Work Stack/progress and subsequent dated receipt.
 
 Parent intake covered all 16 owning paths, nine complete target programs and 76
 local Markdown links. The post-Core CF1 representative passed 1 case, the
@@ -208,3 +224,118 @@ No native, Drive, server, headless or whole-package result is inferred from the
 host evidence. App Step/Phase/aggregate closure remains separate. Original Goal,
 bases, epoch, scopes and review/repair history are retained. This projection
 changes no executable, normative contract, configuration, fixture or test logic.
+
+## Historical initial owning TFAF3-02 adoption — 2026-10-11, before validation
+
+Historical initial-authoring snapshot, superseded by the actual receipt below:
+The current owning documentary/specification-conformance adoption is in progress
+under `tfaf3-02-documentary-spec-entry-manifest-20261011@1`. Explanatory comments
+in existing CU1–CU8 and G1–G6 scenarios are adopted without executable changes.
+The parent-selected CU3 representative, combined 30-suite host refresh, lib/test
+analysis and dry formatting over 21 targets have not yet run. Parent full source
+intake, independent protected Step acceptance and exact Step commit are pending.
+Phase full validation through `scripts/validate-full.sh`, its sole comprehensive
+review and distinct release remain required. TFAF3-03 remains planned; public
+exports and fixture handoff belong to that Step. Intermediate Step commits are
+not package releases. App acceptance and native/Drive/server/headless proof
+remain separate.
+
+Core Phase 2 is closed at `314b19b78fdf5eb2a5ee7922f81284a476912350`.
+TFAF3-01 is accepted and committed at
+`19998a2b188e9df2332b7389a8a523f78e1fb699`. Earlier pending-commit paragraphs
+are historical snapshots superseded by this verified native commit. Original
+shared Goal, App binding, bases, epoch, R29 and global42/local40 history remain;
+the owning TFAF ledger does not replace or promote the App reviews.
+
+Historical frozen PLAN/command-selection snapshot before Step 2 validation:
+The current PLAN `tfaf3-02-owning-acceptance-plan-20261011@1` retains the
+original three Steps and 49-path Phase scope. Step 2 owns 29 paths: its original
+27 plus the shared Phase/checklist. There are 21 target programs and exactly 15
+author paths (five documents and explanatory comments in ten suites). The
+[owning journal](../journal/2026/10/2026-10-11-tfaf3-02-acceptance.md) lists every
+owning path, author subset, target and selected command. Representative CU3,
+combined 30 suites, analysis and dry 21 are selected and not yet executed;
+independent protected Step acceptance remains pending. Existing full Phase and
+consumer obligations are unchanged. No newly accepted Hygiene/Development
+Candidate or independent reviewer conclusion is asserted by this initial adoption.
+
+## Actual parent TFAF3-02 consumer software receipt — 2026-10-11
+
+Receipt `tfaf3-02-consumer-validation-20261011@1` records completed parent
+source intake and actual selected host execution after accepted Core
+`314b19b78fdf5eb2a5ee7922f81284a476912350` and TFAF3-01
+`19998a2b188e9df2332b7389a8a523f78e1fb699`. The CU3 representative passed 1;
+the combined 30-suite accumulator passed 290 with 0 failures; lib/test analysis
+reported `No issues found!`; the final identical 21-target dry-format check
+reported 0 changed. All four final commands exited 0. Parent static intake is
+recorded as `tfaf3-02-implementation-static-final-20261011@1`.
+
+The initial dry-format check exited 1 because three suites required canonical
+invocation wrapping/indentation and optional call commas. Failure
+`VAL-TFAF3-02-FORMAT-001` and
+`tfaf3-02-format-fix-manifest-20261011@1` remain historical evidence.
+The separate registered fix worker `/root/tfaf3_02_format_fix_20261011`
+formatted only `test/submission_settings_controller_test.dart`,
+`test/submission_commit_controller_test.dart` and
+`test/submission_status_summary_panel_test.dart`: its command exited 0 and
+reported 3 files changed. The parent inspected the mechanical delta and reused
+the unchanged behavioral test/analysis evidence. The original failed log
+`tfaf3-02-dry_format-20261011.log` and final
+`tfaf3-02-dry_format-final-20261011.log` are retained alongside
+`tfaf3-02-representative-20261011.log`, `tfaf3-02-accumulator-20261011.log` and
+`tfaf3-02-analysis-20261011.log` in the parent App repository's
+`.codex-workflow/phases/PHASE-6.1/`. This documentary editor performed no repair,
+formatter or validation command.
+
+This receipt supersedes the earlier initial-authoring/prevalidation statements
+that selected commands had not executed or parent intake was pending. Historical
+command selections, actual failures and C2/D2G/Step 1 results retain their original
+scope. TFAF3-01 is accepted and natively committed at
+`19998a2b188e9df2332b7389a8a523f78e1fb699`; its earlier pending-commit statements
+are explicitly historical. Step 2 is review-pending, unaccepted and uncommitted;
+no independent reviewer conclusion, acceptance or commit is asserted.
+
+Private originals/SQLite, controlled ports and mocked native channels establish
+selected host consumer software evidence only. This is not full TFAF package
+validation or native/Drive/headless/server or App acceptance. TFAF3-03 remains
+planned, including public-export/fixture handoff. Full `scripts/validate-full.sh`,
+the sole comprehensive Phase review, applicable consumer evidence and distinct
+Phase release remain required. The original three Steps, 49-path Phase, 29-path
+Step, 21 targets, authority/bases/epoch and App R29/global42/local40 history are
+retained. The five existing checked boxes remain unchanged; no new gate is checked.
+
+This five-document projection is authored under
+`tfaf3-02-documentary-spec-entry-manifest-20261011@2`, a documentary subset of
+the initial 15 author paths. Parent factual/static intake and all subsequent
+review/acceptance transitions remain parent-owned.
+
+## 2026-10-11 — Owning TFAF3-02 acceptance before commit
+
+Parent complete-source intake and relevant host software evidence cover the
+29 owning paths and 21 complete Dart programs (11 production, 10 suites).
+The CU3 representative passed 1 case; the combined 30-suite accumulator passed
+290 cases with zero failures; analysis found no issues; final dry formatting
+checked 21 files with zero changed. The initial formatter failure and its
+three-suite formatting-only correction remain in the prior dated receipt.
+
+Fresh independent protected reviewer `/root/tfaf3_02_owning_step_review_20261011`
+recorded `tfaf3-02-owning-step-review-20261011@1`: SEALED_LEDGER PASS across
+67 selected paths, all 29 owning paths, all 21 target programs and the one
+configuration path. It reported no Current Boundary Blockers, Hygiene or
+Development Candidates. The owning review ledger advanced from revision 4 to 5;
+this is an owning Step acceptance, not the comprehensive Phase review.
+
+TFAF3-02 is accepted; its exact 29-path commit remains pending. This receipt
+supersedes the historical pre-review statuses without rewriting their outcomes.
+The common-screen implementation and three matching presentation behavior items
+are now checked. The composite evidence/review/commit item remains open until
+the native commit is verified. TFAF3-03 public exports/fixture handoff, complete
+package validation, the sole comprehensive Phase review and distinct release
+remain required. Phase 3 stays active; TFAF3-01 remains committed at 19998a2.
+
+Host checks use private originals, SQLite, controlled ports and native-channel
+mocks. They do not establish native, Drive, server, headless, whole Book Material
+transfer, physical radio/OS-stop or long human-consent acceptance. App Step and
+Phase closure remain separate. Original Goal, bases, epoch, scopes and counters
+are retained. This projection changes no executable, fixture, configuration,
+public contract, validation outcome or runtime behavior; no test rerun is needed.

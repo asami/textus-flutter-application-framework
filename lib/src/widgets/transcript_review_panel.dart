@@ -10,6 +10,7 @@ class TranscriptReviewPanel extends StatefulWidget {
   const TranscriptReviewPanel({
     required this.controller,
     this.onReviewChanged,
+    this.interactionAllowed,
     super.key,
   });
 
@@ -18,6 +19,11 @@ class TranscriptReviewPanel extends StatefulWidget {
 
   /// Explicit correction or proposal-selection result, never a disk-save claim.
   final ValueChanged<AudioTranscriptReview>? onReviewChanged;
+
+  /// Borrowed pure caller admission, reevaluated before each user edit/command.
+  /// Null preserves controller rules; false or a thrown evaluation denies entry.
+  /// Owner calls to the borrowed controller remain independent of this UI gate.
+  final bool Function()? interactionAllowed;
 
   @override
   State<TranscriptReviewPanel> createState() => _TranscriptReviewPanelState();
@@ -46,7 +52,9 @@ class _TranscriptReviewPanelState extends State<TranscriptReviewPanel> {
   }
 
   void _changed() {
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     final value = widget.controller.draftText;
     if (_text.text != value) {
       _text.value = TextEditingValue(
@@ -57,21 +65,65 @@ class _TranscriptReviewPanelState extends State<TranscriptReviewPanel> {
     setState(() {});
   }
 
-  void _record(AudioTranscriptReview Function() action) {
-    final controller = widget.controller;
+  bool _owns(AudioCaptureController controller, int generation) =>
+      mounted &&
+      generation == _generation &&
+      identical(controller, widget.controller) &&
+      !controller.isDetached &&
+      !controller.isDisposed;
+
+  bool _allows(AudioCaptureController controller, int generation) {
+    // Given the render-time owner, stale callbacks have no current authority.
+    // When admission is requested, ownership precedes current policy evaluation.
+    if (!_owns(controller, generation)) {
+      return false;
+    }
+    try {
+      // Then null preserves compatibility and a live pure policy decides entry.
+      return widget.interactionAllowed?.call() ?? true;
+    } catch (_) {
+      // Then a policy failure is denied without draft or history mutation.
+      return false;
+    }
+  }
+
+  void _edit(AudioCaptureController controller, int generation, String text) {
+    // Given a TextField may already have updated its local buffer.
+    // When current policy denies the edit, restore only this same owner's buffer.
+    if (!_allows(controller, generation)) {
+      if (_owns(controller, generation) && _text.text != controller.draftText) {
+        final canonical = controller.draftText;
+        _text.value = TextEditingValue(
+          text: canonical,
+          selection: TextSelection.collapsed(offset: canonical.length),
+        );
+      }
+      // Then denied edits never change common dirty state or notify a revision.
+      return;
+    }
+    // Then an admitted edit retains exact Unicode, whitespace and empty intent.
+    controller.setDraftText(text);
+  }
+
+  void _record(
+    AudioCaptureController controller,
+    int generation,
+    AudioTranscriptReview Function() action,
+  ) {
+    // Given a correction/proposal action captured by the rendered owner.
+    // When it is invoked, reject before touching its controller's review.
+    if (!_allows(controller, generation)) {
+      return;
+    }
     final callback = widget.onReviewChanged;
-    final generation = _generation;
     AudioTranscriptReview result;
     try {
       result = action();
     } catch (_) {
       return;
     }
-    if (mounted &&
-        generation == _generation &&
-        identical(controller, widget.controller) &&
-        !controller.isDetached &&
-        !controller.isDisposed) {
+    // Then only the same live owner receives the accepted explicit revision.
+    if (_owns(controller, generation)) {
       callback?.call(result);
     }
   }
@@ -86,6 +138,10 @@ class _TranscriptReviewPanelState extends State<TranscriptReviewPanel> {
   @override
   Widget build(BuildContext context) {
     final controller = widget.controller;
+    // Given this render's exact borrowed owner and local editor.
+    final generation = _generation;
+    // When pure admission determines enabled controls, no controller work starts.
+    final interactionAllowed = _allows(controller, generation);
     final review = controller.review;
     final latest = review == null || review.reports.isEmpty
         ? null
@@ -96,8 +152,14 @@ class _TranscriptReviewPanelState extends State<TranscriptReviewPanel> {
       String label,
     ) => ElevatedButton(
       key: ValueKey('transcript-review-$suffix'),
-      onPressed: controller.canEditTranscript
-          ? () => _record(() => controller.useReport(report.id))
+      // Then bind this owner/generation to _record, which rechecks current
+      // admission when the user invokes the callback before mutation.
+      onPressed: controller.canEditTranscript && interactionAllowed
+          ? () => _record(
+              controller,
+              generation,
+              () => controller.useReport(report.id),
+            )
           : null,
       child: Text(label),
     );
@@ -110,11 +172,11 @@ class _TranscriptReviewPanelState extends State<TranscriptReviewPanel> {
           TextField(
             key: const ValueKey('transcript-review-text'),
             controller: _text,
-            enabled: controller.canEditTranscript,
+            enabled: controller.canEditTranscript && interactionAllowed,
             minLines: 3,
             maxLines: null,
             decoration: const InputDecoration(labelText: 'Current transcript'),
-            onChanged: controller.setDraftText,
+            onChanged: (text) => _edit(controller, generation, text),
           ),
           if (controller.hasUnsavedText) const Text('Unrecorded changes'),
           Wrap(
@@ -123,8 +185,12 @@ class _TranscriptReviewPanelState extends State<TranscriptReviewPanel> {
             children: [
               ElevatedButton(
                 key: const ValueKey('transcript-review-record-correction'),
-                onPressed: controller.canRecordCorrection
-                    ? () => _record(controller.recordCorrection)
+                onPressed: controller.canRecordCorrection && interactionAllowed
+                    ? () => _record(
+                        controller,
+                        generation,
+                        controller.recordCorrection,
+                      )
                     : null,
                 child: const Text('Record correction'),
               ),
