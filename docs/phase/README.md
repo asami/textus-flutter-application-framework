@@ -31,3 +31,25 @@ The user selected exact-path ordinary local Git after the registered runner's
 native-history delivery failure. The distinct Phase release binds closure.
 Editing Studio App Phases 2/3 retain separate pending acceptance; Core is
 unchanged. No successor work starts from this closure.
+
+## Phase 3 — closed on 2026-10-11
+
+| Phase | Status | Boundary |
+| --- | --- | --- |
+| [Phase 3](phase-3.md) | closed; distinct release binding and verified native closure receipt required | Background Transfer Status UI, public Core facades, common settings/status/Commit/summary and shared capture admission |
+
+All three native owning Steps are accepted and committed:
+TFAF3-01 `19998a2b188e9df2332b7389a8a523f78e1fb699`,
+TFAF3-02 `b80b739f3457c71f50ab4f7605a5e891f1ed4bea`, and
+TFAF3-03 `21ec7e50df33ae9a0938e8ed0c53e7f5b8cee226`.
+The sole comprehensive review `tfaf3-full-review-20261011@1` passed.
+The owning complete `scripts/validate-full.sh` reported clean analysis,
+all 621 tests passed and driver exit 0. See the
+[closed checklist](phase-3-checklist.md) and
+[completion journal](../journal/2026/10/2026-10-11-phase-3-completion.md).
+
+The distinct release is bound to `tfaf3-phase3-closure-20261011@1`;
+native Phase acceptance requires its successful commit and verified closure
+receipt. No pending operation is represented as an already created commit.
+App Phase 6.1 owning acceptance, aggregate validation and release remain
+separately pending. No successor Phase starts here.

@@ -1,12 +1,12 @@
 # Phase 3 Checklist - Background Transfer Status UI
 
-status=active
+status=closed
+closed_at=2026-10-11
 Owner: textus-flutter-application-framework Phase 3.
 Update rule: mark an owning Step, behavior or Phase gate only after its actual
 attributable receipt; retain historical evidence and append dated corrections.
 Plan: [Phase 3](phase-3.md).
-Current progress: TFAF3-03 is accepted after complete parent intake and fresh independent protected Step review PASS over 66 selected paths, six owning files and both whole target programs. Actual FA1 1, eight-suite App 105, clean App analysis and dry two-target formatting with zero changes remain relevant; retained producer evidence is representative 1, 30 suites / 290, clean analysis and dry 21 / 0 changed. Its exact six-path native Step commit remains pending. TFAF3-01 and TFAF3-02 remain accepted and committed. Phase 3 stays active; complete package driver, sole comprehensive Phase review and distinct release, plus separate App owning/aggregate gates, remain pending.
-Twelve boxes are checked: the previous ten plus Step 3 fixture/composition acceptance and the public handoff behavior. The composite Step 3 commit and all Phase closure gates remain unchecked. Other behavioral gates retain their current state for the comprehensive Phase review.
+All three owning Steps are accepted and committed. The sole comprehensive review passed; complete analysis and all 621 Flutter tests passed. All 22 current checklist items are evidenced or bound to the required distinct release and verified native closure receipt; App owning acceptance remains separate.
 
 ## Entry
 
@@ -32,7 +32,7 @@ validation complete and exact 29-path native commit
 ## TFAF3-03: Consumer acceptance
 
 - [x] Verify fixtures and app composition, including failure/restart presentation.
-- [ ] Record focused behavioral evidence, independent acceptance and the owning Step commit.
+- [x] Record focused behavioral evidence, independent acceptance and the owning Step commit.
 
 ## Behavioral acceptance
 
@@ -44,25 +44,73 @@ validation complete and exact 29-path native commit
 - [x] Hand off the public component/configuration to the app and verify its
       two destination labels, Home entry and return-to-Material integration.
 
-- [ ] Cover both success paths, offline waiting, upload failure/dependent wait,
+- [x] Cover both success paths, offline waiting, upload failure/dependent wait,
       upload success/submission failure and targeted retry, partial upload,
       queued/running restart, no-upload content and indeterminate progress.
-- [ ] Prove that UI rebuild/navigation and submission retry do not repeat an
+- [x] Prove that UI rebuild/navigation and submission retry do not repeat an
       already successful upload for the same committed content.
-- [ ] Keep fake acceptance distinct from actual remote upload/submission; retain
+- [x] Keep fake acceptance distinct from actual remote upload/submission; retain
       local originals and do not claim Candidate formation from either result.
-- [ ] Run proportionate package analysis/tests and affected-consumer checks;
+- [x] Run proportionate package analysis/tests and affected-consumer checks;
       coordinate release validation with Phase 6.1 without declaring upstream
       obligations satisfied by app-only tests.
 
 ## Phase closure
 
-- [ ] All owned Steps and required consumer/adapter evidence accepted.
-- [ ] Complete package analysis and tests pass; app-only tests are insufficient.
-- [ ] One comprehensive Phase review closes all current blockers.
-- [ ] Publish the public API/UI handoff and separate actual from fake results.
-- [ ] Record closure in Phase, checklist, journal and index; create the distinct
-      Phase release commit through the normal execution workflow.
+- [x] All owned Steps and required consumer/adapter evidence accepted.
+- [x] Complete package analysis and tests pass; app-only tests are insufficient.
+- [x] One comprehensive Phase review closes all current blockers.
+- [x] Publish the public API/UI handoff and separate actual from fake results.
+- [x] Record closure in Phase, checklist, journal and index; bind the distinct
+      release to its required verified native closure receipt.
+
+## 2026-10-11 — Final TFAF Phase 3 closure projection
+
+All three owning Steps passed independent acceptance and were committed:
+TFAF3-01 `19998a2b188e9df2332b7389a8a523f78e1fb699`,
+TFAF3-02 `b80b739f3457c71f50ab4f7605a5e891f1ed4bea`, and
+TFAF3-03 `21ec7e50df33ae9a0938e8ed0c53e7f5b8cee226`.
+The first and sole comprehensive review `tfaf3-full-review-20261011@1`
+passed at the original Phase epoch: 49 owning / 103 selected paths,
+32 whole target programs and two configurations. CPB, Hygiene and
+Development Candidate findings are empty; owning review ledger revision 9
+retains all Step reviews, the comment-only M0 closure and factual amendments.
+No Phase repair, second comprehensive review or new epoch was needed.
+
+The actual complete `scripts/validate-full.sh` ran package analysis and all
+Flutter tests: analysis reported no issues; all 621 tests passed and the driver
+exited 0. Evidence: `tfaf3-full-validation-admission-20261011@1`, native
+session 54811, terminal `d89ecd`. All original returned execution objects are
+retained. Four poll outputs were tool-truncated; the analyzer result and
+complete final 621-pass terminal are available, and omitted bodies are not
+reconstructed. This is the complete package driver, distinct from the retained
+selected producer 290 checks and eight-suite App 105 checks.
+
+TFAF owns generic borrowed public facades, common settings and separate
+upload/submission status, explicit Commit/summary/navigation composition and
+shared capture admission. Core retains immutable intent/configuration,
+persistence, adapters and execution; the App retains Book eligibility,
+mapping, editing context and domain navigation. Opaque presentation/execution
+context stays opaque. Upload success, matching submission acknowledgement and
+server Candidate formation remain distinct. Constructors, rebuild, navigation
+and restoration do not start transfer or authorization.
+
+Host real-file/SQLite fixtures and controlled ports prove only their selected
+software behavior. Native NC empty-queue, NQ authentication-required failure/
+retry/reopen and ND synthetic 68-byte Drive transfer retain their limits.
+No actual server acceptance, whole Book-media Drive transfer, successful
+headless upload, physical radio/OS-stop experiment or long actual human-consent
+wait is claimed. Core Phase 2 is separately closed at
+`314b19b78fdf5eb2a5ee7922f81284a476912350` with full 844-test validation.
+
+This final management projection supersedes current pending statuses in the
+dated snapshots below while preserving their original chronology. The distinct
+release is bound to `tfaf3-phase3-closure-20261011@1`; native Phase acceptance
+requires its successful commit and verified closure receipt. No pending
+operation is represented as an already created commit. Its own native identity
+is recorded in that receipt after creation. App Phase 6.1 owning Step/Phase,
+aggregate validation and release remain separate obligations. No successor
+Phase, server implementation or Phase 5 begins here.
 
 ## Historical connected acceptance evidence — 2026-10-11, initial entry
 
