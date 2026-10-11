@@ -1,6 +1,20 @@
 /// Reusable, configuration-driven application UI for Textus Flutter apps.
 library;
 
+export 'src/submission/submission_facade.dart';
+export 'src/submission/submission_configuration_facade.dart';
+export 'src/submission/submission_presentation_configuration.dart';
+export 'src/submission/submission_status_binding.dart';
+export 'src/submission/submission_status_summary.dart';
+export 'src/submission/submission_settings_controller.dart';
+export 'src/submission/submission_settings_page.dart';
+export 'src/submission/submission_status_workspace.dart';
+export 'src/submission/submission_status_page.dart';
+export 'src/submission/submission_commit_controller.dart';
+export 'src/submission/submission_commit_button.dart';
+export 'src/submission/submission_status_overview_controller.dart';
+export 'src/submission/submission_status_summary_panel.dart';
+
 export 'src/capture/capture_storage_facade.dart';
 export 'src/capture/audio_capture_facade.dart';
 export 'src/capture/audio_capture_controller.dart';
