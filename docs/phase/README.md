@@ -53,3 +53,14 @@ native Phase acceptance requires its successful commit and verified closure
 receipt. No pending operation is represented as an already created commit.
 App Phase 6.1 owning acceptance, aggregate validation and release remain
 separately pending. No successor Phase starts here.
+
+## Planned successor — reconciled on 2026-10-20
+
+| Phase | Status | Boundary |
+| --- | --- | --- |
+| [Phase 4](phase-4.md) | planned; execution not started | Sensitive Interaction application API; provider-delegated payment, authentication, signing and consent, consuming the declared Core/CNCF/Cozy dependencies |
+
+The formerly overlapping Sensitive Interaction Phase 3 plan is now Phase 4.
+The completed transfer-status Phase 3, its checklist and dated closure history
+retain their identity and scope. See the
+[approved decision](../journal/2026/10/2026-10-20-phase-plan-reconciliation.md).

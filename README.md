@@ -94,6 +94,23 @@ avoid/span choices; explicit session preference survives compact sizing and
 orientation without changing detail focus or semantic selection. Spanning a
 physical gap carries a content-occlusion warning.
 
+## Cross-platform development strategy
+
+TFAF uses **Android-primary parallel development**, not an Android-first porting model.
+The primary development device is a foldable Android device, currently the Pixel 11 Pro Fold. Its compact, expanded, hinge-separated, and multi-pane presentations deliberately exercise the harder adaptive-layout cases early. iPhone 18 Pro is the standard phone reference device and is used continuously at meaningful milestones to verify that the same Flutter/TFAF model realizes a sound conventional phone experience on iOS.
+
+This is a development and verification strategy, not a platform rule in the UI model. Framework behavior must continue to derive from display regions, usable size, platform capabilities, and declared presentation policy rather than from device names or Android/iOS branches. Android-specific behavior must not leak into semantic View, Display Model, navigation, or business logic merely because Android is the primary development target.
+
+The intended feedback loop is:
+
+1. develop common Flutter/TFAF behavior primarily against Android/Fold,
+2. verify the same feature on iPhone during normal development rather than after completion,
+3. identify genuine platform or form-factor differences,
+4. absorb reusable differences into TFAF/Core capability and presentation abstractions,
+5. leave only irreducibly platform-specific integration at the platform boundary.
+
+Thus Pixel Fold acts as the advanced adaptive-UI development driver, while iPhone acts as the standard-phone compatibility and UX reference. Future tablets, iPad, desktop, and other form factors should enter through the same capability-driven model rather than create a new platform-specific architecture.
+
 ## Development status
 
 The initial Flutter package foundation is in place. Its public entry point is
