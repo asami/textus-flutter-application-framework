@@ -311,7 +311,9 @@ This yields three separate concerns:
 
 The same separation principle used for Resource List/Detail visual realization therefore also applies to Settings.
 
-See [Phase 2](../phase/phase-2.md) for the executable Fold/Font development phase.
+See [Phase 2](../phase/phase-2.md) for the Settings foundation and
+[Phase 2.1](../phase/phase-2.1.md) for the executable Fold/Font and reference
+driver proof (split on 2026-10-01).
 
 
 ## Display Mutation and standard interaction runtime

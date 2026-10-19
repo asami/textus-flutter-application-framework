@@ -31,3 +31,9 @@ The user selected exact-path ordinary local Git after the registered runner's
 native-history delivery failure. The distinct Phase release binds closure.
 Editing Studio App Phases 2/3 retain separate pending acceptance; Core is
 unchanged. No successor work starts from this closure.
+
+## Planned successor
+
+- [Phase 3 - Background Transfer Status UI](phase-3.md), status=planned.
+  [Checklist](phase-3-checklist.md). Consumes Core Phase 2 and delivers reusable
+  UI to app Phase 6.1. Owns package validation/review/release independently.
