@@ -1,6 +1,25 @@
 /// Reusable, configuration-driven application UI for Textus Flutter apps.
 library;
 
+export 'src/submission/submission_facade.dart';
+export 'src/submission/submission_configuration_facade.dart';
+export 'src/submission/submission_presentation_configuration.dart';
+export 'src/submission/submission_status_binding.dart';
+export 'src/submission/submission_status_summary.dart';
+export 'src/submission/submission_settings_controller.dart';
+export 'src/submission/submission_settings_page.dart';
+export 'src/submission/submission_status_workspace.dart';
+export 'src/submission/submission_status_page.dart';
+export 'src/submission/submission_commit_controller.dart';
+export 'src/submission/submission_commit_button.dart';
+export 'src/submission/submission_status_overview_controller.dart';
+export 'src/submission/submission_status_summary_panel.dart';
+
+export 'src/capture/capture_storage_facade.dart';
+export 'src/capture/audio_capture_facade.dart';
+export 'src/capture/audio_capture_controller.dart';
+export 'src/capture/photo_capture_facade.dart';
+export 'src/capture/photo_capture_controller.dart';
 export 'src/configuration/presentation_realization.dart';
 export 'src/configuration/application_navigation_configuration.dart';
 export 'src/configuration/resource_list_detail_configuration.dart';
@@ -30,6 +49,15 @@ export 'src/widgets/application_text_toolbar.dart' show applicationTextAppBar;
 export 'src/widgets/resource_list_detail.dart';
 export 'src/widgets/settings_shell.dart';
 export 'src/widgets/settings_navigation.dart';
+export 'src/widgets/photo_capture_panel.dart';
+export 'src/widgets/audio_capture_panel.dart';
+export 'src/widgets/transcript_review_panel.dart';
+export 'src/widgets/photo_role_capture_panel.dart';
+export 'src/widgets/capture_image_preview.dart';
+export 'src/widgets/recognition_comparison_view.dart';
 export 'src/display/display_definition_registry.dart';
 export 'src/display/display_presentation_controller.dart';
 export 'src/widgets/display_session_view.dart';
+
+export 'package:textus_flutter_core/textus_flutter_core.dart'
+    show RecognitionSettings;

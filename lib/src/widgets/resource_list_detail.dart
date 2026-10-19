@@ -19,6 +19,8 @@ class ResourceListDetail extends StatefulWidget {
     required this.configuration,
     required this.viewModel,
     this.displayModel,
+    this.detailSupplementBuilder,
+    this.additionalActions = const [],
     super.key,
   });
 
@@ -28,6 +30,25 @@ class ResourceListDetail extends StatefulWidget {
   /// Optional application-owned presentation-session state.
   final ResourceListDetailDisplayModel? displayModel;
 
+  /// Caller-provided content appended to a ready selected scrolling detail.
+  ///
+  /// Receives the current record and detail build context. The subtree is keyed
+  /// by record ID: the same identity permits ordinary widget updates, while a
+  /// different identity or removal follows Flutter's disposal lifecycle. The
+  /// caller owns domain I/O, navigation, state and request/update policy. This
+  /// presentation hook grants no command or storage authority, and ordinary
+  /// rebuilds may invoke it again. Null preserves the configured detail alone.
+  final Widget Function(BuildContext context, ResourceRecord record)?
+      detailSupplementBuilder;
+
+  /// Caller-provided toolbar widgets appended after common layout controls.
+  ///
+  /// Available in list, detail and diagnostic presentations. The caller owns
+  /// action state, domain I/O and navigation, and may supply disabled actions.
+  /// Callbacks are invoked by the supplied widgets, never by this build method.
+  /// The empty default preserves the existing toolbar.
+  final List<Widget> additionalActions;
+
   @override
   State<ResourceListDetail> createState() => _ResourceListDetailState();
 }
@@ -36,6 +57,7 @@ class _ResourceListDetailState extends State<ResourceListDetail> {
   late ResourceListDetailDisplayModel _displayModel;
   late bool _ownsDisplayModel;
   Rect? _approvedBodyViewport;
+  int _loadGeneration = 0;
 
   @override
   void initState() {
@@ -44,7 +66,7 @@ class _ResourceListDetailState extends State<ResourceListDetail> {
     _ownsDisplayModel = widget.displayModel == null;
     widget.viewModel.addListener(_changed);
     _displayModel.addListener(_changed);
-    widget.viewModel.load();
+    _scheduleLoad();
   }
 
   @override
@@ -53,12 +75,14 @@ class _ResourceListDetailState extends State<ResourceListDetail> {
     if (oldWidget.viewModel != widget.viewModel) {
       oldWidget.viewModel.removeListener(_changed);
       widget.viewModel.addListener(_changed);
-      widget.viewModel.load();
+      _scheduleLoad();
     }
     if (oldWidget.displayModel != widget.displayModel) {
       final oldDisplayModel = _displayModel;
       oldDisplayModel.removeListener(_changed);
-      if (_ownsDisplayModel) oldDisplayModel.dispose();
+      if (_ownsDisplayModel) {
+        oldDisplayModel.dispose();
+      }
       _displayModel = widget.displayModel ?? ResourceListDetailDisplayModel();
       _ownsDisplayModel = widget.displayModel == null;
       _displayModel.addListener(_changed);
@@ -67,14 +91,34 @@ class _ResourceListDetailState extends State<ResourceListDetail> {
 
   @override
   void dispose() {
+    _loadGeneration++;
     widget.viewModel.removeListener(_changed);
     _displayModel.removeListener(_changed);
-    if (_ownsDisplayModel) _displayModel.dispose();
+    if (_ownsDisplayModel) {
+      _displayModel.dispose();
+    }
     super.dispose();
   }
 
+  void _scheduleLoad() {
+    final viewModel = widget.viewModel;
+    final generation = ++_loadGeneration;
+    // Given an attached borrower, when its build frame finishes, then only the
+    // current mounted attachment may start its automatic semantic read.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted ||
+          generation != _loadGeneration ||
+          !identical(viewModel, widget.viewModel)) {
+        return;
+      }
+      viewModel.load();
+    });
+  }
+
   void _changed() {
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void _select(ResourceRecord resource) {
@@ -85,7 +129,9 @@ class _ResourceListDetailState extends State<ResourceListDetail> {
   void _showList() => _displayModel.showList();
 
   void _approveBodyViewport(Rect viewport) {
-    if (!mounted || _approvedBodyViewport == viewport) return;
+    if (!mounted || _approvedBodyViewport == viewport) {
+      return;
+    }
     setState(() => _approvedBodyViewport = viewport);
   }
 
@@ -184,7 +230,9 @@ class _ResourceListDetailState extends State<ResourceListDetail> {
         return PopScope<Object?>(
           canPop: !interceptsCompactBack,
           onPopInvokedWithResult: (didPop, _) {
-            if (!didPop && interceptsCompactBack) _showList();
+            if (!didPop && interceptsCompactBack) {
+              _showList();
+            }
           },
           child: Scaffold(
             appBar: ApplicationTextScaling.maybeTextScalerOf(context) == null
@@ -303,6 +351,9 @@ class _ResourceListDetailState extends State<ResourceListDetail> {
       ],
       _ => const [],
     });
+    // Given caller actions, when any presentation builds, then common controls
+    // retain their order and the caller's widgets follow them without execution.
+    actions.addAll(widget.additionalActions);
     return actions;
   }
 
@@ -365,7 +416,9 @@ class _ResourceListDetailState extends State<ResourceListDetail> {
       return child;
     }
     final region = _largestUsableRegion(fold);
-    if (region == null) return const SizedBox.shrink();
+    if (region == null) {
+      return const SizedBox.shrink();
+    }
     return Stack(
       fit: StackFit.expand,
       children: [_positionedRegion(region, viewport, child)],
@@ -397,9 +450,15 @@ class _ResourceListDetailState extends State<ResourceListDetail> {
     final trailing = fold.trailing;
     final leadingUsable = leading.width > 0 && leading.height > 0;
     final trailingUsable = trailing.width > 0 && trailing.height > 0;
-    if (!leadingUsable && !trailingUsable) return null;
-    if (!trailingUsable) return leading;
-    if (!leadingUsable) return trailing;
+    if (!leadingUsable && !trailingUsable) {
+      return null;
+    }
+    if (!trailingUsable) {
+      return leading;
+    }
+    if (!leadingUsable) {
+      return trailing;
+    }
     final leadingArea = leading.width * leading.height;
     final trailingArea = trailing.width * trailing.height;
     return leadingArea >= trailingArea ? leading : trailing;
@@ -448,6 +507,7 @@ class _ResourceListDetailState extends State<ResourceListDetail> {
       : _ResourceDetail(
           configuration: widget.configuration,
           viewModel: widget.viewModel,
+          detailSupplementBuilder: widget.detailSupplementBuilder,
         );
 }
 
@@ -492,13 +552,17 @@ class _RenderViewportObserver extends RenderProxyBox {
   Rect? _lastReportedViewport;
 
   set approvedViewport(Rect? value) {
-    if (_approvedViewport == value) return;
+    if (_approvedViewport == value) {
+      return;
+    }
     _approvedViewport = value;
     markNeedsPaint();
   }
 
   set requiresGeometry(bool value) {
-    if (_requiresGeometry == value) return;
+    if (_requiresGeometry == value) {
+      return;
+    }
     _requiresGeometry = value;
     markNeedsPaint();
   }
@@ -521,10 +585,14 @@ class _RenderViewportObserver extends RenderProxyBox {
   }
 
   void _reportViewport(Rect viewport) {
-    if (_lastReportedViewport == viewport) return;
+    if (_lastReportedViewport == viewport) {
+      return;
+    }
     _lastReportedViewport = viewport;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!attached || _lastReportedViewport != viewport) return;
+      if (!attached || _lastReportedViewport != viewport) {
+        return;
+      }
       _onViewport(viewport);
     });
   }
@@ -552,7 +620,9 @@ class _ResourceList extends StatelessWidget {
       return const Center(child: CircularProgressIndicator());
     }
     final resources = viewModel.resources!;
-    if (resources.isEmpty) return const Center(child: Text('No resources'));
+    if (resources.isEmpty) {
+      return const Center(child: Text('No resources'));
+    }
     return ListView.builder(
       key: PageStorageKey<ResourceViewModel>(viewModel),
       itemCount: resources.length,
@@ -571,15 +641,25 @@ class _ResourceList extends StatelessWidget {
 }
 
 class _ResourceDetail extends StatelessWidget {
-  const _ResourceDetail({required this.configuration, required this.viewModel});
+  const _ResourceDetail({
+    required this.configuration,
+    required this.viewModel,
+    this.detailSupplementBuilder,
+  });
 
   final ResourceListDetailConfiguration configuration;
   final ResourceViewModel viewModel;
 
+  /// Borrows the caller's ready-record presentation builder.
+  final Widget Function(BuildContext context, ResourceRecord record)?
+      detailSupplementBuilder;
+
   List<ResourceAction> _visibleActions() {
     final available = viewModel.selectedActions;
     final configured = configuration.detailActions;
-    if (configured == null) return available;
+    if (configured == null) {
+      return available;
+    }
     final availableIds = available.map((action) => action.id).toSet();
     return [
       for (final action in configured)
@@ -616,6 +696,14 @@ class _ResourceDetail extends StatelessWidget {
                   : () => viewModel.performAction(action.id),
               child: Text(action.label),
             ),
+          ),
+        // Given a ready selected record, when its detail is actually built,
+        // then supplied content follows configured fields and actions. Ordinary
+        // Flutter updates retain same-ID state and dispose removed identities.
+        if (detailSupplementBuilder != null)
+          KeyedSubtree(
+            key: ValueKey<String>(record.id),
+            child: detailSupplementBuilder!(context, record),
           ),
       ],
     );
