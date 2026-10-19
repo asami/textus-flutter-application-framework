@@ -42,6 +42,180 @@ Future<void> showSubmissionDetail(
 void main() {
   // Exercise standard list/detail, exact two-stage status and explicit App navigation.
   group('CU3 CU4 standard submission status page', () {
+    testWidgets('received server ID comes from the persisted Core ACK', (
+      tester,
+    ) async {
+      await tester.runAsync(() async {
+        // Given media-free durable intent and the actual controlled Core owner.
+        final fixture = await SubmissionFixture.create();
+        final queue = await fixture.openQueue();
+        final service = fixture.service(queue);
+        final facade = SubmissionFacade(service: service);
+        final request = await fixture.request(withMaterials: false);
+        final workspace = SubmissionStatusWorkspace(
+          facade: facade,
+          presentationConfiguration: submissionPresentation(),
+          now: fixture.now,
+        );
+        try {
+          await facade.commit(request);
+          // When the owner explicitly pumps bounded work until Core stores ACK.
+          SubmissionRunResult? result;
+          for (var attempt = 0; attempt < 3; attempt++) {
+            result = await service.processNext(networkAllowed: true);
+            if ((await queue.find(request.id))!.acknowledgement != null) {
+              break;
+            }
+          }
+          // Then completion and the exact server identity are durable Core facts.
+          expect(result!.outcome, SubmissionRunOutcome.submitted);
+          final acknowledgement = (await queue.find(request.id))!
+              .acknowledgement!;
+          expect(acknowledgement.serverId, 'controlled/request1');
+          expect(fixture.transport.submits, 1);
+          final submits = fixture.transport.submits;
+          final wakes = fixture.scheduler.calls;
+          for (final width in [320.0, 900.0]) {
+            tester.view.physicalSize = Size(width, 1600);
+            tester.view.devicePixelRatio = 1;
+            // When mounting/selecting the common page at narrow and wide sizes.
+            await tester.pumpWidget(
+              MaterialApp(home: SubmissionStatusPage(workspace: workspace)),
+            );
+            await settleSubmissionPage(tester, workspace);
+            await workspace.viewModel.select(request.id);
+            workspace.displayModel.openDetail();
+            await tester.pump();
+            await showSubmissionDetail(
+              tester,
+              'Server ID: controlled/request1',
+            );
+            // Then the rendered identity and typed projection match stored ACK.
+            expect(find.text('Server ID: controlled/request1'), findsOneWidget);
+            final selected =
+                workspace.viewModel.selectedResource
+                    as SubmissionStatusResourceRecord;
+            expect(selected.status.acknowledgement, acknowledgement);
+            expect(
+              selected.status.submission.state,
+              SubmissionTransferOperationState.succeeded,
+            );
+            expect(selected.value('submission'), 'Succeeded');
+            // When explicitly refreshing the read-only selected detail.
+            await workspace.viewModel.detailView.refresh();
+            await tester.pump();
+            // Then reads/rendering neither dispatch work nor duplicate intent.
+            expect(find.text('Server ID: controlled/request1'), findsOneWidget);
+            expect(
+              (workspace.viewModel.selectedResource
+                      as SubmissionStatusResourceRecord)
+                  .status
+                  .acknowledgement,
+              acknowledgement,
+            );
+            expect((await queue.list()).length, 1);
+            expect(
+              (await queue.find(request.id))!.acknowledgement,
+              acknowledgement,
+            );
+            expect(fixture.transport.submits, submits);
+            expect(fixture.scheduler.calls, wakes);
+            expect(tester.takeException(), isNull);
+          }
+        } finally {
+          // Remove presentation and drain its borrower before owner disposal.
+          await tester.pumpWidget(const SizedBox.shrink());
+          await workspace.detach();
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+          await fixture.dispose();
+        }
+      });
+    });
+
+    for (final unknownFailure in [false, true]) {
+      testWidgets(
+        unknownFailure
+            ? 'transport outcome unknown has no received server ID'
+            : 'pending intent has no received server ID',
+        (tester) async {
+          await tester.runAsync(() async {
+            // Given real queued intent with no acknowledgement supplied by UI.
+            final fixture = await SubmissionFixture.create();
+            final queue = await fixture.openQueue();
+            final service = fixture.service(queue);
+            final facade = SubmissionFacade(service: service);
+            final request = await fixture.request(withMaterials: false);
+            final workspace = SubmissionStatusWorkspace(
+              facade: facade,
+              presentationConfiguration: submissionPresentation(),
+              now: fixture.now,
+            );
+            try {
+              await facade.commit(request);
+              if (unknownFailure) {
+                // When the owner encounters an actual unknown transport failure.
+                fixture.transport.fail = true;
+                fixture.transport.failureOutcome =
+                    SubmissionTransportFailureOutcome.unknown;
+                final result = await service.processNext(networkAllowed: true);
+                // Then the attempt fails without manufacturing an ACK.
+                expect(result.outcome, SubmissionRunOutcome.failed);
+                expect(fixture.transport.submits, 1);
+              }
+              final submits = fixture.transport.submits;
+              final wakes = fixture.scheduler.calls;
+              for (final width in [320.0, 900.0]) {
+                tester.view.physicalSize = Size(width, 1600);
+                tester.view.devicePixelRatio = 1;
+                // When mounting/selecting and refreshing the actual common page.
+                await tester.pumpWidget(
+                  MaterialApp(home: SubmissionStatusPage(workspace: workspace)),
+                );
+                await settleSubmissionPage(tester, workspace);
+                await workspace.viewModel.select(request.id);
+                workspace.displayModel.openDetail();
+                await workspace.viewModel.detailView.refresh();
+                await tester.pump();
+                // Then both persisted and typed status have no ACK or server ID.
+                final selected =
+                    workspace.viewModel.selectedResource
+                        as SubmissionStatusResourceRecord;
+                expect(selected.status.acknowledgement, isNull);
+                expect(
+                  selected.status.acknowledgementUncertain,
+                  unknownFailure,
+                );
+                expect(
+                  selected.status.submission.state,
+                  unknownFailure
+                      ? SubmissionTransferOperationState.outcomeUnknown
+                      : SubmissionTransferOperationState.queued,
+                );
+                expect((await queue.find(request.id))!.acknowledgement, isNull);
+                expect(find.textContaining('Server ID:'), findsNothing);
+                expect(
+                  find.textContaining('controlled/request1'),
+                  findsNothing,
+                );
+                expect((await queue.list()).length, 1);
+                expect(fixture.transport.submits, submits);
+                expect(fixture.scheduler.calls, wakes);
+                expect(tester.takeException(), isNull);
+              }
+            } finally {
+              // Unmount and drain the borrower before closing owned Core IO.
+              await tester.pumpWidget(const SizedBox.shrink());
+              await workspace.detach();
+              tester.view.resetPhysicalSize();
+              tester.view.resetDevicePixelRatio();
+              await fixture.dispose();
+            }
+          });
+        },
+      );
+    }
+
     // Specify the named existing behavior with its actual setup, commands and observations.
     testWidgets(
       'CU3 explicit Commit and status page preserve two-stage durable intent',

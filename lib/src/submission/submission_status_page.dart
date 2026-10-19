@@ -124,6 +124,8 @@ class _SubmissionStatusPageState extends State<SubmissionStatusPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (record.status.acknowledgement != null)
+          Text('Server ID: ${record.status.acknowledgement!.serverId}'),
         for (final file in record.status.files) ...[
           Text(configuration.fileLabel(file)),
           Text(configuration.operationStateLabel(file.state)),

@@ -165,3 +165,21 @@ transfer, physical radio/OS-stop or long human-consent acceptance. App Step and
 Phase closure remain separate. Original Goal, bases, epoch, scopes and counters
 are retained. This projection changes no executable, fixture, configuration,
 public contract, validation outcome or runtime behavior; no test rerun is needed.
+
+## 2026-10-19 — ESA62 received server ID display
+
+The common submission status page displays `Server ID: <serverId>` only when
+the selected typed Core status contains a persisted acknowledgement. The value
+is the exact `acknowledgement.serverId`; presentation supplies no input, default
+or derived identity. Pending intent and an unknown transport outcome without an
+acknowledgement display no server ID. The existing generic `Succeeded` state
+vocabulary, file facts, scheduling notices and navigation retain their meaning.
+
+Mounting, selection, rendering and refresh remain reads: they do not schedule,
+upload or submit work. Executable scenarios use the existing private SQLite
+fixture and public Core facade/service with owner-driven controlled transport,
+then check narrow/wide common-page presentation and unchanged dispatch/row
+counts. Actual validation, independent review and App ESA62 acceptance of this
+bounded delta remain pending. These scenarios establish no native or server
+proof. The dated Phase 3 receipts above remain historical; this delta does not
+reopen the accepted, closed Phase 3 boundary.
