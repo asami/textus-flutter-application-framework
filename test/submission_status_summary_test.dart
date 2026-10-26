@@ -3,6 +3,7 @@ import 'package:textus_flutter_application_framework/textus_flutter_application_
 import 'package:textus_flutter_core/textus_flutter_core.dart';
 
 import 'support/submission_fixture.dart';
+import 'tkl_submission_status_page_test.dart' show persistIntegrityScenario;
 
 SubmissionTransferStatus observedStatus({
   required String id,
@@ -108,6 +109,41 @@ SubmissionTransferStatus observedStatus({
 }
 
 void main() {
+  test('DU03 native retained TKL stages contribute disjoint attention running and waiting counts', () async {
+    // Given independent native records for hashing, verification failure, registration and uncertainty.
+    final fixture = await SubmissionFixture.create();
+    final queue = await fixture.openQueue();
+    try {
+      await persistIntegrityScenario(fixture, queue, id: 'hashing', prepared: 1);
+      await persistIntegrityScenario(fixture, queue, id: 'mismatch',
+        state: TklMaterialDeliveryState.verificationFailed,
+        proof: const [TklOriginalVerificationState.verified, TklOriginalVerificationState.failed],
+        failure: 'integrityMismatch');
+      await persistIntegrityScenario(fixture, queue, id: 'registered',
+        state: TklMaterialDeliveryState.registered,
+        proof: const [TklOriginalVerificationState.verified, TklOriginalVerificationState.verified]);
+      await persistIntegrityScenario(fixture, queue, id: 'unknown', prepared: 0,
+        state: TklMaterialDeliveryState.reconciliationRequired,
+        failure: 'integrityUpgradeRequired');
+      final facade = SubmissionFacade(service: fixture.service(queue));
+      // When querying actual Core observations and deriving the pure overview.
+      final statuses = await facade.listTransferStatuses(observedAt: fixture.clock);
+      final summary = SubmissionStatusSummary.fromStatuses(statuses);
+      // Then a registration without Studio acknowledgement stays waiting, not complete.
+      expect(summary.totalCount, 4);
+      expect(summary.runningCount, 1);
+      expect(summary.attentionCount, 2);
+      expect(summary.waitingCount, 1);
+      expect(summary.completedCount, 0);
+      expect(summary.runningCount + summary.attentionCount +
+        summary.waitingCount + summary.completedCount, summary.totalCount);
+      expect(fixture.scheduler.calls, 0);
+      expect(fixture.storage.uploads, 0);
+      expect(fixture.transport.submits, 0);
+    } finally {
+      await fixture.dispose();
+    }
+  });
   group('Current observation summary and pure presentation', () {
     test('CF7 disjoint buckets distinguish no upload waits partial failure uncertainty and success', () {
       // Given genuine immutable Core projections with independent operation facts.

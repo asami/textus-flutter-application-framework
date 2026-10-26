@@ -7,6 +7,26 @@ final class SubmissionFacade {
 
   final SubmissionService _service;
 
+  bool get supportsRegisteredMaterialHandoff =>
+      _service.registeredMaterialHandoffs != null;
+
+  RegisteredMaterialHandoffService get _handoffs =>
+      _service.registeredMaterialHandoffs ??
+      (throw StateError('Registered material handoff is unavailable'));
+
+  Future<RegisteredMaterialHandoffCommandResult> enqueueRegisteredMaterialHandoff(
+    String sourceRequestId,
+    HttpSubmissionConnection target,
+  ) => _handoffs.enqueueRegistered(sourceRequestId, target);
+
+  Future<RegisteredMaterialHandoffRecord?> findRegisteredMaterialHandoff(
+    String sourceRequestId,
+  ) => _handoffs.findForSource(sourceRequestId);
+
+  Future<RegisteredMaterialHandoffCommandResult> reconcileRegisteredMaterialHandoff(
+    String sourceRequestId,
+  ) => _handoffs.reconcile(sourceRequestId);
+
   Future<SubmissionCommitResult> commit(SubmissionRequest request) =>
       _service.commit(request);
 

@@ -22,20 +22,25 @@ final class SubmissionStatusSummary {
     var completed = 0;
     for (final status in statuses) {
       total++;
-      final upload = status.upload.state;
-      final submission = status.submission.state;
-      if ((upload == SubmissionTransferOperationState.succeeded ||
-              upload == SubmissionTransferOperationState.notRequired) &&
-          submission == SubmissionTransferOperationState.succeeded) {
+      final operations = [
+        status.upload,
+        status.submission,
+        ?status.preparation,
+        ?status.verification,
+        ?status.registration,
+      ];
+      if (status.acknowledgement != null &&
+          (status.upload.state == SubmissionTransferOperationState.succeeded ||
+              status.upload.state == SubmissionTransferOperationState.notRequired) &&
+          status.submission.state == SubmissionTransferOperationState.succeeded) {
         completed++;
       } else if (status.acknowledgementUncertain ||
-          upload == SubmissionTransferOperationState.failed ||
-          upload == SubmissionTransferOperationState.outcomeUnknown ||
-          submission == SubmissionTransferOperationState.failed ||
-          submission == SubmissionTransferOperationState.outcomeUnknown) {
+          operations.any((operation) =>
+              operation.state == SubmissionTransferOperationState.failed ||
+              operation.state == SubmissionTransferOperationState.outcomeUnknown)) {
         attention++;
-      } else if (upload == SubmissionTransferOperationState.running ||
-          submission == SubmissionTransferOperationState.running) {
+      } else if (operations.any((operation) =>
+          operation.state == SubmissionTransferOperationState.running)) {
         running++;
       } else {
         waiting++;

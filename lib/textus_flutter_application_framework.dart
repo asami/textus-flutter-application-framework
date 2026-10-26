@@ -2,6 +2,7 @@
 library;
 
 export 'src/submission/submission_facade.dart';
+export 'src/submission/tkl_material_delivery_facade.dart';
 export 'src/submission/submission_configuration_facade.dart';
 export 'src/submission/submission_presentation_configuration.dart';
 export 'src/submission/submission_status_binding.dart';
