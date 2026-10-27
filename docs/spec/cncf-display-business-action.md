@@ -1,9 +1,9 @@
-# Common ordinary Business action — ESA5-05
+# Common ordinary Business action — ESA5-06
 
-Status: authored implementation and executable specifications; no validation or
-acceptance result is claimed here. This is the Phase 5 Step 5 manual Reload
-boundary. Step 6 immediate client reload and Step 7 full/native context gates
-remain pending.
+Status: ESA5-06 accepted after TFAF129/App18 focused tests and independent
+protected Step conformance review on 2026-10-27. Step 6 adds immediate client reload
+in the common Widget after a successful ordinary ACK. Step 7 actual context,
+full/native validation and release gates remain pending.
 
 ## Trusted declarations and command ownership
 
@@ -42,19 +42,28 @@ ordinary successful response has exactly `resourceId`, integer `revision`, and
 `outcome` under `data`; the controlled test outcome is `review-requested`.
 The Core `CncfDisplayBusinessResult` is separate from Display. The controller
 stores and notifies its ACK before any safe read and returns true at ACK.
-This Step performs no automatic read, command replay, or inferred Display update.
-Fields and stage retain the old projection until explicit common Reload.
+Core and the controller remain ACK-only. The common Widget awaits that command
+completion, checks that its mounted session, controller and View Model are still
+current and that the controller is not disposed, then explicitly awaits the
+existing controller Reload. That client-initiated Detail/read followed by
+List/query updates fields and stage without a second user tap. The ordinary
+response itself is never treated as Display and no command is replayed.
 
 Known ACKs require reconciliation; failed, stale or incoherent reads retain the
 ACK and block commands. Reload uses only safe Detail/query reads for the captured
 resource. A different selected ID causes no I/O and preserves the observation.
 Selection changed during a read cannot fabricate closure or overwrite a different
 selected Resource. Explicitly selecting the affected Resource and choosing Reload
-can recover. Both fresh formal projections must be nonfailed, nonloading, identify
+can recover. Failed automatic reads leave the same manual Reload recovery
+available. Both fresh formal projections must be nonfailed, nonloading, identify
 the actual selected Resource, have matching revisions, and reach the BigInt floor
 from the current Business ACK. Unknown commands without ACK use the formal
 observation floor. They can resolve through safe reads, with no automatic replay;
-a later enabled explicit intent can execute again.
+a later enabled explicit intent can execute again. Unknown, conflicting and
+malformed ordinary responses do not trigger automatic reads because they do not
+produce a successful ACK. Reload retains its existing exclusive busy owner,
+generation, identity and revision-floor checks; a competing Reload cannot start
+duplicate reads while another Reload owns that controller.
 
 `businessOperation` chooses the current receipt kind. An older standard-update
 receipt remains immutable history while Business is current and cannot be labelled
@@ -71,8 +80,10 @@ and borrowed layout. Business buttons intersect trusted declarations, formal
 availability and `configuration.detailActions`: null uses the wire label, empty
 hides all, and an explicit allowlist matches action ID and replaces the label.
 Null/hidden/unregistered bindings are omitted; disabled remains visible disabled.
-The stable key is `cncf-display-business-<actionId>`. The callback invokes the
-common controller directly. No App action handler, domain field mapping or raw
+The stable key is `cncf-display-business-<actionId>`. A small private common
+callback captures the controller and binding, verifies current controller/View
+Model identity before dispatch, then awaits the ACK and explicit reconciliation.
+No public API, constructor flag or alternate mode is added. No App action handler, domain field mapping or raw
 Conclusion prose is introduced.
 
 Current Business results show ordinary outcome/revision and the captured title-role
@@ -86,14 +97,26 @@ While `businessRunning && !isDisposed`, pointer absorption, progress and a curre
 route PopScope protect underlying selection and Back. The existing compact Back
 interception is inactive during that busy ownership. No async Business completion
 navigates or touches a replacement controller. Replacing/removing the opener
-rebuilds its current layout; late completion has no common-view callback or
-implicit read. Disposal retires publication and marks in-flight delivery unknown,
+rebuilds its current layout and retires the opener session. A captured callback
+from a replaced controller cannot dispatch. After ACK, a retired session or
+disposed controller cannot start follow-up reads. A selection mismatch is rejected
+by the existing Reload selection guard without I/O. Disposal retires publication
+and marks in-flight delivery unknown,
 without disposing borrowed owners or claiming command cancellation.
 
 Disposal emits no notifier. An explicit Back attempt on the current disposed busy
 route refreshes stale UI and pops only when its Navigator can pop. A root remains
 visible; a pushed route may leave; an unrelated current route cannot be forcibly
 popped by old work. The existing retired Editor escape remains preserved.
+
+## Dated Step 5 contract history — 2026-10-27
+
+ESA5-05 defined the manual Reload boundary: the controller stored and notified an
+ordinary ACK without automatic reads, and the common Widget left the old Display
+visible until the user chose Reload. ESA5-06 preserves that ACK-only Core and
+controller contract and adds the current Widget's explicit post-ACK read/query.
+The earlier boundary is historical; current successful common Business clicks
+do not require a second user tap.
 
 ## Executable specification and evidence provenance
 
@@ -105,14 +128,28 @@ history, unknown/conflict/malformed responses, selection change/recovery, and
 borrowed-owner disposal scenarios.
 
 `test/display/cncf_display_business_resource_view_test.dart` authors actual common
-widget clicks at widths 400 and 1000, busy pointer/Back protection, unchanged stage
-at ACK, explicit Reload to Japanese review stage and hidden action, retained
+widget clicks at widths 400 and 1000, busy pointer/Back protection, known ACK
+notification before a held automatic read, Japanese review stage and hidden
+action after automatic reconciliation without another tap, retained
 ResourceListDetail/layout identity, label/allowlist/availability intersections,
-Business3 after mutation2 with failed Detail, fixed failure messages, captured
+Business3 after mutation2 with failed automatic Detail and manual recovery, fixed failure messages, captured
 selection guidance, replacement/removal under unrelated routes, and finite
 root/pushed disposed-busy escape. Given/When/Then comments accompany expectation
 boundaries. Finite gates are explicitly released; held spinners are not awaited
 with unbounded settling.
+
+`test/display/cncf_display_business_reload_test.dart` authors three actual common
+Widget scenarios: ACK publication before GET with a competing captured callback,
+selection changed during a held automatic Detail read with no following query
+and explicit affected-resource/manual-Reload recovery; controller retirement
+directly from the test outside all notifier callbacks after the held automatic
+Detail/read has actually entered its GET gate. Releasing that borrowed read after
+retirement waits for Detail loading to finish, preserves the known ACK and
+prevents a following query, further I/O or navigation; borrowed read owners
+survive unmount. The third scenario rejects
+a captured old button callback after replacement has
+completed `didUpdateWidget`. These exercise the existing public view and genuine
+Core transport fixture rather than source-shape or metadata-only assertions.
 
 The portable fixture uses the existing genuine reference Display/descriptor
 baseline from `test/fixtures/cncf_display_reference_v1`. New Business ACKs,

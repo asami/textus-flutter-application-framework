@@ -119,6 +119,29 @@ class _CncfDisplayResourceViewState extends State<CncfDisplayResourceView> {
     );
   }
 
+  Future<void> _executeBusiness(
+    CncfDisplayMutationController controller,
+    CncfDisplayBusinessBinding binding,
+  ) async {
+    if (!mounted ||
+        !identical(widget.mutationController, controller) ||
+        !identical(widget.viewModel, controller.viewModel) ||
+        controller.isDisposed) {
+      return;
+    }
+    final session = _session;
+    final accepted = await controller.executeBusiness(binding);
+    if (!accepted ||
+        !mounted ||
+        session != _session ||
+        !identical(widget.mutationController, controller) ||
+        !identical(widget.viewModel, controller.viewModel) ||
+        controller.isDisposed) {
+      return;
+    }
+    await controller.reload();
+  }
+
   List<Widget> _businessButtons(CncfDisplayMutationController controller) {
     final configured = widget.configuration.detailActions;
     return [
@@ -130,7 +153,7 @@ class _CncfDisplayResourceViewState extends State<CncfDisplayResourceView> {
             TextButton(
               key: Key('cncf-display-business-${binding.actionId}'),
               onPressed: controller.canInvokeBusiness(binding)
-                  ? () => controller.executeBusiness(binding)
+                  ? () => _executeBusiness(controller, binding)
                   : null,
               child: Text(
                 configured == null

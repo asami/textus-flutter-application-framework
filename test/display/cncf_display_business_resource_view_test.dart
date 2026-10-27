@@ -86,7 +86,7 @@ Future<void> readyRoute(WidgetTester tester, Finder finder) async {
 void main() {
   for (final width in [400.0, 1000.0]) {
     testWidgets(
-      'ordinary Business retains ACK until explicit Reload at $width with borrowed layout',
+      'ordinary Business retains ACK before automatic Reload at $width with borrowed layout',
       (tester) async {
         // Given actual compact or expanded Detail with borrowed layout and held delivery.
         final fixture = session(tester);
@@ -101,6 +101,14 @@ void main() {
         final state = tester.state(find.byType(ResourceListDetail));
         final observation = fixture.source.lastDetail;
         final gate = fixture.hold('business');
+        final read = fixture.hold('read');
+        final ackNotifications = <String>[];
+        fixture.controller.addListener(() {
+          if (fixture.controller.businessReceipt != null &&
+              !read.entered.isCompleted) {
+            ackNotifications.add(fixture.requests.last.method);
+          }
+        });
         // When one Business intent enters the held request.
         await tapBusiness(tester);
         await gate.entered.future;
@@ -139,35 +147,32 @@ void main() {
         expect(find.byType(ResourceListDetail), findsOneWidget);
         // When held delivery completes with an ordinary ACK.
         gate.release();
-        await tester.pumpAndSettle();
-        // Then the old Display stays visible with retained outcome and identity.
-        expect(
-          find.text('Committed review-requested, revision 2'),
-          findsOneWidget,
-        );
-        expect(find.text('Affected resource: 日本の民話'), findsOneWidget);
-        expect(find.text('収集中'), findsWidgets);
-        final stageField = find.widgetWithText(ListTile, 'Capture stage');
-        expect(stageField, findsOneWidget);
-        expect(
-          find.descendant(of: stageField, matching: find.text('収集中')),
-          findsOneWidget,
-        );
-        expect(
-          find.descendant(of: stageField, matching: find.text('レビュー待ち')),
-          findsNothing,
-        );
+        for (var frame = 0; frame < 120 && !read.entered.isCompleted; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+        // Then the known ACK precedes the automatic held read and owns reconciliation.
+        expect(read.entered.isCompleted, isTrue);
+        expect(ackNotifications, isNotEmpty);
+        expect(ackNotifications, everyElement('POST'));
+        final receipt = fixture.controller.businessReceipt!;
+        expect(receipt.resourceId, fixture.id);
+        expect(receipt.revision, '2');
+        expect(receipt.outcome, 'review-requested');
+        expect(fixture.controller.needsReconciliation, isTrue);
+        expect(fixture.controller.busy, isTrue);
+        expect(fixture.viewModel.detailLoading, isTrue);
         expect(fixture.source.lastDetail, same(observation));
-        expect(fixture.requests, hasLength(3));
-        expect(find.byKey(progressKey), findsNothing);
-        expect(
-          tester.widget<TextButton>(find.byKey(businessKey)).onPressed,
-          isNull,
-        );
-        // When explicit common Reload returns coherent safe reads.
-        await tester.tap(find.byKey(reloadKey));
-        await tester.pumpAndSettle();
+        expect(fixture.requests, hasLength(4));
+        expect(fixture.posts, hasLength(1));
+        expect(find.byKey(progressKey), findsOneWidget);
+        // When the automatic Detail read and following query finish without a second tap.
+        read.release();
+        for (var frame = 0; frame < 120 && fixture.controller.busy; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+        await tester.pump();
         // Then Japanese projection and the hidden action replace the old display.
+        final stageField = find.widgetWithText(ListTile, 'Capture stage');
         expect(find.text('レビュー待ち'), findsWidgets);
         expect(stageField, findsOneWidget);
         expect(
@@ -184,8 +189,22 @@ void main() {
           findsOneWidget,
         );
         expect(fixture.posts, hasLength(1));
+        expect(
+          fixture.posts.single.body,
+          'resourceId=${Uri.encodeQueryComponent(fixture.id)}',
+        );
+        expect(fixture.requests.map((request) => request.method), [
+          'GET',
+          'GET',
+          'POST',
+          'GET',
+          'GET',
+        ]);
         expect(fixture.puts, isEmpty);
+        expect(fixture.controller.businessReceipt, same(receipt));
+        expect(fixture.controller.busy, isFalse);
         expect(fixture.controller.needsReconciliation, isFalse);
+        expect(find.byKey(progressKey), findsNothing);
         expect(tester.state(find.byType(ResourceListDetail)), same(state));
         expect(display.compactDetailRequested, presentation);
         // When the common UI is unmounted and its borrowed owners are used.
@@ -226,11 +245,19 @@ void main() {
         await tester.pumpAndSettle();
         await tapBusiness(tester);
         await tester.pumpAndSettle();
-        // Then the actual result falls back to the captured ID with one POST and no implicit reads.
+        // Then the actual result falls back to the captured ID after one POST and automatic safe reads.
         expect(find.text('Affected resource: ${fixture.id}'), findsOneWidget);
         expect(fixture.controller.businessReceipt!.resourceId, fixture.id);
         expect(fixture.posts, hasLength(1));
-        expect(fixture.requests, hasLength(3));
+        expect(fixture.requests, hasLength(5));
+        expect(fixture.requests.map((request) => request.method), [
+          'GET',
+          'GET',
+          'POST',
+          'GET',
+          'GET',
+        ]);
+        expect(fixture.controller.needsReconciliation, isFalse);
         expect(fixture.puts, isEmpty);
       },
     );
@@ -346,22 +373,17 @@ void main() {
       await tester.tap(find.byKey(const Key('cncf-display-save')));
       await tester.pumpAndSettle();
       final prior = fixture.controller.receipt;
-      // When Business returns its revision 3 ACK.
+      fixture.failRead = true;
+      // When Business returns its revision 3 ACK and its automatic Detail read fails.
       await tapBusiness(tester);
       await tester.pumpAndSettle();
-      // Then the current UI chooses the ordinary receipt over the older mutation receipt.
+      // Then the current ordinary receipt survives with manual Reload available.
       expect(prior!.revision, '2');
       expect(
         find.text('Committed review-requested, revision 3'),
         findsOneWidget,
       );
       expect(find.text('Committed updated, revision 2'), findsNothing);
-      // Given a failing Detail read.
-      fixture.failRead = true;
-      // When explicit toolbar Reload is attempted.
-      await tester.tap(find.byKey(reloadKey));
-      await tester.pumpAndSettle();
-      // Then Business revision 3 and the affected identity survive with Reload reachable.
       expect(find.text('Could not load resource'), findsOneWidget);
       expect(
         find.text('Committed review-requested, revision 3'),
@@ -372,6 +394,7 @@ void main() {
       expect(find.byKey(reloadKey), findsOneWidget);
       expect(fixture.posts, hasLength(1));
       expect(fixture.puts, hasLength(1));
+      expect(fixture.controller.needsReconciliation, isTrue);
       expect(find.textContaining('PRIVATE'), findsNothing);
       // Given a restored coherent projection.
       fixture.failRead = false;
@@ -424,6 +447,7 @@ void main() {
           isNull,
         );
         expect(fixture.posts, hasLength(1));
+        expect(fixture.requests, hasLength(3));
         // When explicit safe Reload returns current enabled Detail.
         await tester.tap(find.byKey(reloadKey));
         await tester.pumpAndSettle();
