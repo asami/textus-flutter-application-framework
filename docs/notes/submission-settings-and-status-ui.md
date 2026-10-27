@@ -1,5 +1,14 @@
 # Submission settings and status UI
 
+## Planned destination-configuration replacement — 2026-10-24
+
+[TKL-managed Material delivery](tkl-managed-material-delivery.md) defines the
+new route: TKL supplies destination configuration, Core executes delivery and
+TFAF presents logical destination, consent and status. Users do not enter Google
+drive/folder IDs. Manual setup described below remains historical/current
+implementation evidence, not the target contract for that route. Migration must
+preserve pending work and distinguish upload from TKL registration.
+
 - Current status: TFAF3-02 is accepted after parent complete-source intake and fresh independent protected owning Step review PASS. Actual CU3 representative passed 1; combined 30-suite host refresh passed 290 with 0 failures; lib/test analysis found no issues; final dry formatting checked 21 files with 0 changed. Its exact 29-path Step commit is pending. TFAF3-01 is accepted and committed at 19998a2b188e9df2332b7389a8a523f78e1fb699. TFAF3-03 remains planned; Phase full driver/review/release and separate App/native/Drive/server/headless gates remain pending.
 - Owner: TFAF shared presentation maintainer; App composition owns borrowed Core resources, current edits and navigation.
 - Update rule: Keep this note aligned with the public C2 components and actual validation/review receipts. Record acceptance only after the responsible parent supplies its evidence; host controlled ports never establish native or Drive acceptance.

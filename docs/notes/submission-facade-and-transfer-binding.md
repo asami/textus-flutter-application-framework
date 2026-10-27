@@ -1,5 +1,11 @@
 # Submission facade and transfer resource binding
 
+The planned [TKL delivery facade](tkl-managed-material-delivery.md), decided
+2026-10-24, replaces client-owned physical destination provisioning for the new
+route. Existing facade descriptions below record the delivered API, not proof
+of TKL support. Core supplies TKL-derived destination and delivery state; TFAF
+must not create a second provider configuration authority.
+
 Current status: TFAF3-01 is accepted after parent intake, independent protected
 Step review and the admitted comment-only M0 closure. Parent post-Core consumer
 software validation passed under tfaf3-01-consumer-validation-20261011@1.
