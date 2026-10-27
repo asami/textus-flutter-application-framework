@@ -4,20 +4,38 @@ import 'package:textus_flutter_core/textus_flutter_core.dart';
 import '../resource/cncf_display_resource_data_source.dart';
 import '../resource/resource_view_model.dart';
 
-/// One descriptor-driven Text editing session, borrowing all read/transport owners.
+/// One Text or trusted Business command session, borrowing all read/transport owners.
 /// Disposal retires continuations; it cannot roll back a dispatched command.
 final class CncfDisplayMutationController extends ChangeNotifier {
   CncfDisplayMutationController({
     required this.source,
     required this.viewModel,
-  }) {
+    List<CncfDisplayBusinessBinding> businessBindings = const [],
+  }) : businessBindings = List.unmodifiable(businessBindings) {
     if (!identical(viewModel.dataSource, source)) {
       throw ArgumentError('The View Model must borrow the selected source');
+    }
+    final actions = <String>{};
+    final bindings = <String>{};
+    for (final binding in this.businessBindings) {
+      if (binding.componentId != source.client.profile.componentId ||
+          !actions.add(binding.actionId) ||
+          !bindings.add(binding.bindingId)) {
+        throw ArgumentError(
+          'Business bindings must be unique and match the source',
+        );
+      }
     }
   }
 
   final CncfDisplayResourceDataSource source;
   final ResourceViewModel viewModel;
+  final List<CncfDisplayBusinessBinding> businessBindings;
+  CncfDisplayBusinessBinding? _businessOperation;
+  CncfDisplayBusinessResult? _businessReceipt;
+  CncfDisplayBusinessBinding? get businessOperation => _businessOperation;
+  CncfDisplayBusinessResult? get businessReceipt => _businessReceipt;
+  bool get businessRunning => _busy && _businessOperation != null;
   bool _busy = false;
   bool _editorOpen = false;
   bool _needsReconciliation = false;
@@ -71,6 +89,89 @@ final class CncfDisplayMutationController extends ChangeNotifier {
         viewModel.selectedResource?.id == observed.resources.single.entityId;
   }
 
+  CncfDisplayRead? get _readyDetail {
+    final observed = source.lastDetail;
+    if (observed == null ||
+        observed.resources.length != 1 ||
+        viewModel.detailLoading ||
+        viewModel.detailFailed ||
+        viewModel.selectedId != observed.resources.single.entityId ||
+        viewModel.selectedResource?.id != observed.resources.single.entityId) {
+      return null;
+    }
+    return observed;
+  }
+
+  /// Availability is presentation metadata, including while a command is busy.
+  String? businessAvailability(CncfDisplayBusinessBinding binding) {
+    if (!businessBindings.any((declared) => identical(declared, binding))) {
+      return null;
+    }
+    final observed = _readyDetail;
+    if (observed == null) return null;
+    final actions = (observed.model['actions']! as List).cast<Map>();
+    final matches = actions.where(
+      (action) =>
+          action['id'] == binding.actionId &&
+          action['bindingId'] == binding.bindingId,
+    );
+    return matches.length == 1
+        ? matches.single['availability'] as String
+        : null;
+  }
+
+  bool canInvokeBusiness(CncfDisplayBusinessBinding binding) =>
+      _idle &&
+      !_editorOpen &&
+      !_needsReconciliation &&
+      businessAvailability(binding) == 'enabled';
+
+  Future<bool> executeBusiness(CncfDisplayBusinessBinding binding) async {
+    if (!canInvokeBusiness(binding)) return false;
+    final observed = _readyDetail!;
+    final generation = ++_generation;
+    _observation = observed;
+    _businessOperation = binding;
+    _businessReceipt = null;
+    _busy = true;
+    _commandStarted = true;
+    _accepted = false;
+    _retiredDraft = false;
+    _editorOpen = false;
+    _descriptor = null;
+    _draft = const {};
+    _initial = const {};
+    _errors = const {};
+    _failure = null;
+    _publish();
+    try {
+      final receipt = await source.client.invokeBusiness(
+        binding: binding,
+        observation: observed,
+      );
+      if (!_current(generation)) return false;
+      _commandStarted = false;
+      _businessReceipt = receipt;
+      _accepted = true;
+      _needsReconciliation = true;
+      // An ordinary ACK is published and returned without starting Display I/O.
+      _publish();
+      return true;
+    } catch (error) {
+      if (_current(generation)) {
+        _failure = _redacted(error);
+        _needsReconciliation = true;
+      }
+      return false;
+    } finally {
+      if (_current(generation)) {
+        _commandStarted = false;
+        _busy = false;
+        _publish();
+      }
+    }
+  }
+
   Future<void> beginEdit() async {
     if (!_idle || _editorOpen || _needsReconciliation) {
       return;
@@ -86,6 +187,10 @@ final class CncfDisplayMutationController extends ChangeNotifier {
     }
     final generation = ++_generation;
     _observation = observed;
+    if (_businessOperation != null) {
+      _businessOperation = null;
+      _receipt = null;
+    }
     _descriptor = null;
     _initial = const {};
     _draft = const {};
@@ -261,6 +366,7 @@ final class CncfDisplayMutationController extends ChangeNotifier {
     if (!_current(generation)) {
       return false;
     }
+    if (viewModel.selectedId != id) return false;
     final oldQuery = source.lastQuery;
     await viewModel.collectionView.load();
     if (!_current(generation)) {
@@ -269,7 +375,11 @@ final class CncfDisplayMutationController extends ChangeNotifier {
     final detail = source.lastDetail;
     final query = source.lastQuery;
     final floor = BigInt.parse(
-      _accepted ? _receipt!.revision : _observation!.resources.single.revision,
+      _accepted
+          ? (_businessOperation != null
+                ? _businessReceipt!.revision
+                : _receipt!.revision)
+          : _observation!.resources.single.revision,
     );
     final rows = query?.resources.where((row) => row.entityId == id).toList();
     final coherent =
@@ -295,7 +405,7 @@ final class CncfDisplayMutationController extends ChangeNotifier {
     }
     _needsReconciliation = false;
     _failure = null;
-    if (_accepted) {
+    if (_accepted || _businessOperation != null) {
       _clearEditor();
       return true;
     }
@@ -318,7 +428,7 @@ final class CncfDisplayMutationController extends ChangeNotifier {
     _draft = const {};
     _initial = const {};
     _errors = const {};
-    if (!_needsReconciliation) {
+    if (!_needsReconciliation && _businessOperation == null) {
       _observation = null;
       _retiredDraft = false;
       _accepted = false;
@@ -351,6 +461,12 @@ final class CncfDisplayMutationController extends ChangeNotifier {
       return;
     }
     if (_commandStarted) {
+      if (_businessOperation != null) {
+        _failure = const CncfDisplayReadException(
+          'outcomeUnknown',
+          outcomeUnknown: true,
+        );
+      }
       _needsReconciliation = true;
       _retiredDraft = true;
     }

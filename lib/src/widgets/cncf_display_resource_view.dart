@@ -9,7 +9,7 @@ import '../resource/resource_view_model.dart';
 import '../view/resource_list_detail_display_model.dart';
 import 'resource_list_detail.dart';
 
-/// Adds the common modal Editor to the existing standard List/Detail.
+/// Adds shared Text editing and trusted ordinary Business to standard List/Detail.
 class CncfDisplayResourceView extends StatefulWidget {
   const CncfDisplayResourceView({
     required this.configuration,
@@ -119,48 +119,121 @@ class _CncfDisplayResourceViewState extends State<CncfDisplayResourceView> {
     );
   }
 
+  List<Widget> _businessButtons(CncfDisplayMutationController controller) {
+    final configured = widget.configuration.detailActions;
+    return [
+      for (final binding in controller.businessBindings)
+        if (controller.businessAvailability(binding) case final availability?)
+          if (availability != 'hidden' &&
+              (configured == null ||
+                  configured.any((action) => action.id == binding.actionId)))
+            TextButton(
+              key: Key('cncf-display-business-${binding.actionId}'),
+              onPressed: controller.canInvokeBusiness(binding)
+                  ? () => controller.executeBusiness(binding)
+                  : null,
+              child: Text(
+                configured == null
+                    ? ((controller.source.lastDetail!.model['actions']! as List)
+                              .cast<Map>()
+                              .singleWhere(
+                                (action) =>
+                                    action['id'] == binding.actionId &&
+                                    action['bindingId'] == binding.bindingId,
+                              )['label']
+                          as String)
+                    : configured
+                          .firstWhere((action) => action.id == binding.actionId)
+                          .label,
+              ),
+            ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final controller = widget.mutationController;
-    return ResourceListDetail(
-      configuration: widget.configuration,
-      viewModel: widget.viewModel,
-      displayModel: widget.displayModel,
-      detailSupplementBuilder: (_, record) => Column(
+    final running = controller.businessRunning && !controller.isDisposed;
+    return PopScope<Object?>(
+      canPop: !running,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop ||
+            !mounted ||
+            ModalRoute.of(context)?.isCurrent != true ||
+            !identical(widget.mutationController, controller) ||
+            !controller.isDisposed ||
+            !controller.businessRunning) {
+          return;
+        }
+        // Disposal emits no notifier. Only an explicit Back on this current
+        // route retires stale busy UI, and a root route must remain visible.
+        setState(() {});
+        final navigator = Navigator.of(context);
+        if (navigator.canPop()) navigator.pop();
+      },
+      child: Stack(
+        fit: StackFit.expand,
         children: [
-          _Result(controller: controller),
-          TextButton(
-            key: const Key('cncf-display-edit'),
-            onPressed:
-                controller.busy ||
-                    controller.isDisposed ||
-                    controller.needsReconciliation ||
-                    controller.editorOpen ||
-                    _routeOpen
-                ? null
-                : _edit,
-            child: const Text('Edit'),
-          ),
-        ],
-      ),
-      // Keep reconciliation reachable even when the existing Detail shows failure.
-      additionalActions: [
-        if (controller.receipt != null && widget.viewModel.detailFailed)
-          Center(
-            child: Text(
-              'Committed ${controller.receipt!.outcome}, revision ${controller.receipt!.revision}',
+          AbsorbPointer(
+            absorbing: running,
+            // The existing compact Back scope must not change presentation
+            // while the outer command owner protects this route.
+            child: TickerMode(
+              enabled: !running,
+              child: ResourceListDetail(
+                configuration: widget.configuration,
+                viewModel: widget.viewModel,
+                displayModel: widget.displayModel,
+                detailSupplementBuilder: (_, record) => Column(
+                  children: [
+                    _Result(controller: controller),
+                    ..._businessButtons(controller),
+                    TextButton(
+                      key: const Key('cncf-display-edit'),
+                      onPressed:
+                          controller.busy ||
+                              controller.isDisposed ||
+                              controller.needsReconciliation ||
+                              controller.editorOpen ||
+                              _routeOpen
+                          ? null
+                          : _edit,
+                      child: const Text('Edit'),
+                    ),
+                  ],
+                ),
+                additionalActions: [
+                  if ((controller.businessOperation != null ||
+                          controller.receipt != null) &&
+                      widget.viewModel.detailFailed)
+                    SizedBox(
+                      width: 260,
+                      child: FittedBox(child: _Result(controller: controller)),
+                    ),
+                  if (controller.needsReconciliation)
+                    IconButton(
+                      key: const Key('cncf-display-reload'),
+                      tooltip: 'Reload',
+                      onPressed: controller.busy || controller.isDisposed
+                          ? null
+                          : controller.reload,
+                      icon: const Icon(Icons.refresh),
+                    ),
+                ],
+              ),
             ),
           ),
-        if (controller.needsReconciliation)
-          IconButton(
-            key: const Key('cncf-display-reload'),
-            tooltip: 'Reload',
-            onPressed: controller.busy || controller.isDisposed
-                ? null
-                : controller.reload,
-            icon: const Icon(Icons.refresh),
-          ),
-      ],
+          if (running)
+            const Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: LinearProgressIndicator(
+                key: Key('cncf-display-business-progress'),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -168,21 +241,59 @@ class _CncfDisplayResourceViewState extends State<CncfDisplayResourceView> {
 class _Result extends StatelessWidget {
   const _Result({required this.controller});
   final CncfDisplayMutationController controller;
+
+  String? get _affectedResource {
+    final observed = controller.observation;
+    if (observed == null || observed.resources.length != 1) return null;
+    final id = observed.resources.single.entityId;
+    for (final field in observed.resources.single.fields) {
+      final value = field['value'];
+      if (field['role'] == 'title' && value is Map && value['type'] == 'text') {
+        final text = value['text'];
+        if (text is String && text.trim().isNotEmpty) {
+          return text;
+        }
+      }
+    }
+    return id;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final receipt = controller.receipt;
+    final business = controller.businessOperation != null;
+    final receipt = business ? null : controller.receipt;
+    final businessReceipt = business ? controller.businessReceipt : null;
     final failure = controller.failure?.failure;
+    final affected = _affectedResource;
+    final mismatch =
+        business &&
+        controller.needsReconciliation &&
+        controller.viewModel.selectedId !=
+            controller.observation?.resources.single.entityId;
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
+        if (businessReceipt != null)
+          Text(
+            'Committed ${businessReceipt.outcome}, revision ${businessReceipt.revision}',
+          ),
+        if (business && affected != null) Text('Affected resource: $affected'),
+        if (mismatch) const Text('Select the affected resource before Reload.'),
         if (receipt != null)
           Text('Committed ${receipt.outcome}, revision ${receipt.revision}'),
         if (controller.needsReconciliation)
-          const Text('Reload required. Do not repeat Save.'),
-        if (controller.needsReconciliation && receipt?.reloadRequired == true)
+          Text(
+            business
+                ? 'Reload required. Do not repeat the command.'
+                : 'Reload required. Do not repeat Save.',
+          ),
+        if (!business &&
+            controller.needsReconciliation &&
+            receipt?.reloadRequired == true)
           const Text('Committed; projection pending'),
         if (controller.failure != null)
           Text(
-            failure?.isEditableRejection == true
+            !business && failure?.isEditableRejection == true
                 ? 'Check the marked value.'
                 : failure?.isConflict == true
                 ? 'The resource changed. Reload required.'

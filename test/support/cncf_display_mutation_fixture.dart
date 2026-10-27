@@ -12,6 +12,20 @@ import 'package:textus_flutter_application_framework/textus_flutter_application_
 const mutationTitle = CncfDisplayFieldLocator('main', 'title');
 const mutationDescription = CncfDisplayFieldLocator('main', 'description');
 
+/// Trusted test configuration for the reference producer's ordinary operation.
+CncfDisplayBusinessBinding referenceBusinessBinding({
+  String componentId = 'org.simplemodeling.textus.EditingStudio',
+  String actionId = 'request-review',
+  String bindingId = 'ess.reference.request-review',
+}) => CncfDisplayBusinessBinding(
+  componentId: componentId,
+  actionId: actionId,
+  bindingId: bindingId,
+  service: 'reference-business',
+  operation: 'requestReview',
+  expectedOutcome: 'review-requested',
+);
+
 Map<String, Object?> mutationFixture(String name) => Map<String, Object?>.from(
   jsonDecode(
     File('test/fixtures/cncf_display_reference_v1/$name.json')
@@ -53,12 +67,17 @@ final class MutationGate {
 
 /// Controlled Core transport: derived revisions are not producer validation.
 final class CncfDisplayMutationFixture {
-  CncfDisplayMutationFixture({Duration timeout = const Duration(seconds: 3)}) {
+  CncfDisplayMutationFixture({
+    Duration timeout = const Duration(seconds: 3),
+    List<CncfDisplayBusinessBinding> businessBindings = const [],
+  }) {
     final initial = mutationFixture('detail-initial');
     id = ((initial['model']! as Map)['resource'] as Map)['entityId']! as String;
     transport = MockClient((request) async {
       requests.add(request);
-      final kind = request.method == 'PUT'
+      final kind = request.method == 'POST'
+          ? 'business'
+          : request.method == 'PUT'
           ? 'update'
           : request.url.path.endsWith('describeMutation.json')
           ? 'descriptor'
@@ -71,6 +90,16 @@ final class CncfDisplayMutationFixture {
       }
       if (kind == 'descriptor') {
         return mutationReply(descriptorData);
+      }
+      if (kind == 'business') {
+        final custom = businessResponse;
+        if (custom != null) return custom(request);
+        // Controlled response derived from the ordinary producer contract, not
+        // a new genuine fixture or evidence of a live producer run.
+        revision = (BigInt.parse(revision) + BigInt.one).toString();
+        values['stage'] = 'レビュー待ち';
+        reviewed = true;
+        return mutationRawReply(businessResultWire());
       }
       if (kind == 'update') {
         final custom = updateResponse;
@@ -120,6 +149,7 @@ final class CncfDisplayMutationFixture {
     controller = CncfDisplayMutationController(
       source: source,
       viewModel: viewModel,
+      businessBindings: businessBindings,
     );
   }
 
@@ -142,11 +172,27 @@ final class CncfDisplayMutationFixture {
   bool failQuery = false;
   String? queryRevision;
   bool missingTitle = false;
+  bool reviewed = false;
+  String actionAvailability = 'enabled';
+  String actionBindingId = 'ess.reference.request-review';
+  Future<http.Response> Function(http.Request)? businessResponse;
   Future<http.Response> Function(http.Request)? updateResponse;
   final _gates = <String, MutationGate>{};
   final allGates = <MutationGate>[];
   List<http.Request> get puts =>
       requests.where((r) => r.method == 'PUT').toList();
+  List<http.Request> get posts =>
+      requests.where((r) => r.method == 'POST').toList();
+
+  String businessResultWire({String outcome = 'review-requested'}) =>
+      jsonEncode({
+        'data': {
+          'resourceId': id,
+          'revision': '@revision@',
+          'outcome': outcome,
+        },
+      }).replaceFirst('"@revision@"', revision);
+
   MutationGate hold(String kind) {
     final gate = MutationGate();
     _gates[kind] = gate;
@@ -180,6 +226,14 @@ final class CncfDisplayMutationFixture {
         field['value'] = {'type': 'missing'};
       } else {
         (field['value'] as Map)['text'] = values[field['id']];
+      }
+    }
+    if (detail) {
+      for (final action in model['actions'] as List) {
+        (action as Map)['availability'] = reviewed
+            ? 'hidden'
+            : actionAvailability;
+        action['bindingId'] = actionBindingId;
       }
     }
     return wire;
