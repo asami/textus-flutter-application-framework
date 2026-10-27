@@ -25,6 +25,7 @@ export 'src/configuration/presentation_realization.dart';
 export 'src/configuration/application_navigation_configuration.dart';
 export 'src/configuration/resource_list_detail_configuration.dart';
 export 'src/resource/resource_data_source.dart';
+export 'src/resource/cncf_display_resource_data_source.dart';
 export 'src/resource/crud_resource_adapter.dart';
 export 'src/resource/resource_collection_view.dart';
 export 'src/resource/resource_detail_view.dart';
