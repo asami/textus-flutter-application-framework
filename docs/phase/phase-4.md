@@ -5,7 +5,7 @@ Plan date: 2026-10-16
 Plan identity reconciled: 2026-10-20
 Execution started: false
 Predecessor: closed Phase 3 — Background Transfer Status UI
-Depends on: textus-flutter-core Phase 2, CNCF Phase 111, Cozy Phase 85
+Depends on: textus-flutter-core Phase 3, CNCF Phase 111, Cozy Phase 85
 
 ## Goal
 
@@ -41,3 +41,7 @@ its existing closure and checklist. This plan retains the Sensitive Interaction
 scope and dependencies recorded on 2026-10-16; relocation starts no execution
 and grants no new acceptance. See the
 [reconciliation decision](../journal/2026/10/2026-10-20-phase-plan-reconciliation.md).
+
+Core dependency identity was reconciled on 2026-10-27: its Sensitive Interaction
+proposal is now Core Phase 3, while Core Phase 2 remains completed Background
+Transfer. This reference update retains this Phase 4 proposal and starts no work.

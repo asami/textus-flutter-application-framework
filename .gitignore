@@ -3,3 +3,5 @@
 /build/
 /coverage/
 .flutter-plugins-dependencies
+# Each development worktree selects its own local Core checkout.
+/pubspec_overrides.yaml

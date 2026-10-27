@@ -10,11 +10,15 @@ class SubmissionSettingsPage extends StatefulWidget {
   const SubmissionSettingsPage({
     required this.controller,
     this.title = 'Submission settings',
+    this.tklDeliveryOnly = false,
     super.key,
   });
 
   final SubmissionSettingsController controller;
   final String title;
+
+  /// This route bootstraps TKL; physical Google storage is server-owned.
+  final bool tklDeliveryOnly;
 
   @override
   State<SubmissionSettingsPage> createState() => _SubmissionSettingsPageState();
@@ -103,8 +107,11 @@ class _SubmissionSettingsPageState extends State<SubmissionSettingsPage> {
       final connection = HttpSubmissionConnection(
         id: _httpId.text,
         endpoint: Uri.parse(_endpoint.text),
-        requiresBearerToken: _requiresBearer,
+        requiresBearerToken: widget.tklDeliveryOnly || _requiresBearer,
       );
+      if (widget.tklDeliveryOnly && !connection.endpoint.path.endsWith('/')) {
+        throw ArgumentError('TKL requires an HTTPS service root.');
+      }
       setState(() => _formFailure = null);
       if (_current(controller)) controller.putHttp(connection);
     } on ArgumentError {
@@ -134,30 +141,36 @@ class _SubmissionSettingsPageState extends State<SubmissionSettingsPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text('Selections apply to new submissions'),
-        const Text('Default storage'),
-        DropdownButton<String>(
-          isExpanded: true,
-          value: snapshot.selectedStorageConnectionId,
-          hint: const Text('None'),
-          items: [
-            const DropdownMenuItem<String>(value: null, child: Text('None')),
-            for (final drive in snapshot.driveConnections)
-              DropdownMenuItem(value: drive.id, child: Text(drive.id)),
-          ],
-          // Given a rendered snapshot, When changed, Then recheck its current owner.
-          onChanged: enabled
-              ? (id) {
-                  if (_current(controller)) {
-                    controller.select(
-                      storageConnectionId: id,
-                      transportConnectionId:
-                          snapshot.selectedTransportConnectionId,
-                    );
+        if (!widget.tklDeliveryOnly) ...[
+          const Text('Default storage'),
+          DropdownButton<String>(
+            isExpanded: true,
+            value: snapshot.selectedStorageConnectionId,
+            hint: const Text('None'),
+            items: [
+              const DropdownMenuItem<String>(value: null, child: Text('None')),
+              for (final drive in snapshot.driveConnections)
+                DropdownMenuItem(value: drive.id, child: Text(drive.id)),
+            ],
+            // Given a rendered snapshot, When changed, Then recheck its current owner.
+            onChanged: enabled
+                ? (id) {
+                    if (_current(controller)) {
+                      controller.select(
+                        storageConnectionId: id,
+                        transportConnectionId:
+                            snapshot.selectedTransportConnectionId,
+                      );
+                    }
                   }
-                }
-              : null,
+                : null,
+          ),
+        ],
+        Text(
+          widget.tklDeliveryOnly
+              ? 'TKL service connection'
+              : 'Default transport',
         ),
-        const Text('Default transport'),
         DropdownButton<String>(
           isExpanded: true,
           value: snapshot.selectedTransportConnectionId,
@@ -247,6 +260,10 @@ class _SubmissionSettingsPageState extends State<SubmissionSettingsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (widget.tklDeliveryOnly)
+                const Text(
+                  'TKL supplies the destination and transfer instructions. Google storage is configured on the server.',
+                ),
               if (snapshot != null) _defaults(controller, snapshot, enabled),
               Wrap(
                 children: [
@@ -272,41 +289,56 @@ class _SubmissionSettingsPageState extends State<SubmissionSettingsPage> {
                 const Text('No submission connections configured.'),
               if (_formFailure != null) Text(_formFailure!),
               if (snapshot != null) ...[
-                for (final drive in snapshot.driveConnections)
-                  _drive(controller, drive, enabled),
+                if (!widget.tklDeliveryOnly)
+                  for (final drive in snapshot.driveConnections)
+                    _drive(controller, drive, enabled),
                 for (final http in snapshot.httpConnections)
                   _HttpSettingsEditor(
                     key: ValueKey((controller, http.id)),
                     controller: controller,
                     connection: http,
                     snapshot: snapshot,
+                    tklDeliveryOnly: widget.tklDeliveryOnly,
                   ),
                 const Divider(),
-                const Text('Add Drive'),
-                _field(_driveId, 'Drive ID', enabled),
-                _field(_account, 'Account ID', enabled),
-                _field(_folder, 'Folder ID', enabled),
-                TextButton(
-                  // Given form input, When explicitly tapped, Then add one safe definition.
-                  onPressed: enabled ? () => _addDrive(controller) : null,
-                  child: const Text('Add Drive'),
+                if (!widget.tklDeliveryOnly) ...[
+                  const Text('Add Drive'),
+                  _field(_driveId, 'Drive ID', enabled),
+                  _field(_account, 'Account ID', enabled),
+                  _field(_folder, 'Folder ID', enabled),
+                  TextButton(
+                    // Given form input, When explicitly tapped, Then add one safe definition.
+                    onPressed: enabled ? () => _addDrive(controller) : null,
+                    child: const Text('Add Drive'),
+                  ),
+                ],
+                Text(
+                  widget.tklDeliveryOnly
+                      ? 'Add TKL service connection (test/bootstrap)'
+                      : 'Add HTTP',
                 ),
-                const Text('Add HTTP'),
                 _field(_httpId, 'HTTP ID', enabled),
-                _field(_endpoint, 'HTTPS endpoint', enabled),
-                CheckboxListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Requires bearer token'),
-                  value: _requiresBearer,
-                  // Given this new definition, When toggled, Then change only form intent.
-                  onChanged: enabled
-                      ? (value) {
-                          if (_current(controller)) {
-                            setState(() => _requiresBearer = value ?? true);
-                          }
-                        }
-                      : null,
+                _field(
+                  _endpoint,
+                  widget.tklDeliveryOnly
+                      ? 'TKL HTTPS service root (ends with /)'
+                      : 'HTTPS endpoint',
+                  enabled,
                 ),
+                if (!widget.tklDeliveryOnly)
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Requires bearer token'),
+                    value: _requiresBearer,
+                    // Given this new definition, When toggled, Then change only form intent.
+                    onChanged: enabled
+                        ? (value) {
+                            if (_current(controller)) {
+                              setState(() => _requiresBearer = value ?? true);
+                            }
+                          }
+                        : null,
+                  ),
                 TextButton(
                   // Given form input, When explicitly tapped, Then add one HTTPS definition.
                   onPressed: enabled ? () => _addHttp(controller) : null,
@@ -326,12 +358,14 @@ class _HttpSettingsEditor extends StatefulWidget {
     required this.controller,
     required this.connection,
     required this.snapshot,
+    this.tklDeliveryOnly = false,
     super.key,
   });
 
   final SubmissionSettingsController controller;
   final HttpSubmissionConnection connection;
   final SubmissionConfigurationSnapshot snapshot;
+  final bool tklDeliveryOnly;
 
   @override
   State<_HttpSettingsEditor> createState() => _HttpSettingsEditorState();
@@ -410,51 +444,53 @@ class _HttpSettingsEditorState extends State<_HttpSettingsEditor> {
         Text('HTTP ID: $id'),
         Text('HTTPS endpoint: ${widget.connection.endpoint}'),
         Text('Requires bearer token: ${widget.connection.requiresBearerToken}'),
-        Text(
-          'Reference access: ${declaration == null
-              ? 'Unknown'
-              : declaration.isEmpty
-              ? 'No access'
-              : declaration.join(', ')}',
-        ),
-        const Text('Does not grant or verify remote permissions'),
-        for (final drive in widget.snapshot.driveConnections)
-          CheckboxListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text('Reference access to ${drive.id}'),
-            value: _selected.contains(drive.id),
-            // Given this exact declaration draft, When toggled, Then change only local intent.
-            onChanged: enabled
-                ? (value) {
+        if (!widget.tklDeliveryOnly) ...[
+          Text(
+            'Reference access: ${declaration == null
+                ? 'Unknown'
+                : declaration.isEmpty
+                ? 'No access'
+                : declaration.join(', ')}',
+          ),
+          const Text('Does not grant or verify remote permissions'),
+          for (final drive in widget.snapshot.driveConnections)
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text('Reference access to ${drive.id}'),
+              value: _selected.contains(drive.id),
+              // Given this exact declaration draft, When toggled, Then change only local intent.
+              onChanged: enabled
+                  ? (value) {
+                      if (_current(controller, id)) {
+                        setState(() {
+                          if (value == true) {
+                            _selected.add(drive.id);
+                          } else {
+                            _selected.remove(drive.id);
+                          }
+                        });
+                      }
+                    }
+                  : null,
+            ),
+          TextButton(
+            // Given explicit operator intent, When saved, Then write only this HTTP declaration.
+            onPressed: enabled
+                ? () {
                     if (_current(controller, id)) {
-                      setState(() {
-                        if (value == true) {
-                          _selected.add(drive.id);
-                        } else {
-                          _selected.remove(drive.id);
-                        }
-                      });
+                      controller.setReferenceAccess(
+                        transportConnectionId: id,
+                        storageConnectionIds: [
+                          for (final drive in widget.snapshot.driveConnections)
+                            if (_selected.contains(drive.id)) drive.id,
+                        ],
+                      );
                     }
                   }
                 : null,
+            child: const Text('Save reference access declaration'),
           ),
-        TextButton(
-          // Given explicit operator intent, When saved, Then write only this HTTP declaration.
-          onPressed: enabled
-              ? () {
-                  if (_current(controller, id)) {
-                    controller.setReferenceAccess(
-                      transportConnectionId: id,
-                      storageConnectionIds: [
-                        for (final drive in widget.snapshot.driveConnections)
-                          if (_selected.contains(drive.id)) drive.id,
-                      ],
-                    );
-                  }
-                }
-              : null,
-          child: const Text('Save reference access declaration'),
-        ),
+        ],
         if (controller.hasHttpCredentialWriter) ...[
           TextField(
             controller: _token,

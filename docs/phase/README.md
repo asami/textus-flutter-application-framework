@@ -1,12 +1,13 @@
 # Development phases
 
-## Planned TKL delivery follow-on — 2026-10-24
+## Accepted TKL delivery follow-on — 2026-10-27
 
 [TKL-managed Material delivery](tkl-managed-material-delivery-plan.md) extends
 the accepted Phase 3 facade/UI for App Phase 6.3. TKL provides destinations;
 TFAF presents connection/consent and progress without Google folder-ID setup.
-This is planned follow-on work, separate from Phase 4 Sensitive Interaction;
-neither existing Phase is reopened or closed by this addition.
+This bounded follow-on is accepted and closed with App Phase 6.3. It remains
+separate from planned Phase 4 Sensitive Interaction; neither existing Phase is
+reopened or newly accepted by this integration.
 
 | Phase | Status | Boundary |
 | --- | --- | --- |

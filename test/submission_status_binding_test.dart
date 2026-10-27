@@ -4,8 +4,68 @@ import 'package:textus_flutter_application_framework/textus_flutter_application_
 import 'package:textus_flutter_core/textus_flutter_core.dart';
 
 import 'support/submission_fixture.dart';
+import 'tkl_submission_status_page_test.dart' show persistIntegrityScenario;
 
 void main() {
+  test('DU03 absent verification remains unreported across native reopen and passive queries', () async {
+    // Given placed originals in the native queue with preparation but no server proof.
+    final fixture = await SubmissionFixture.create();
+    final queue = await fixture.openQueue();
+    await persistIntegrityScenario(fixture, queue, id: 'unreported',
+      state: TklMaterialDeliveryState.transferring);
+    final reopened = await fixture.openQueue();
+    final binding = SubmissionStatusBinding(
+      facade: SubmissionFacade(service: fixture.service(reopened)),
+      presentationConfiguration: submissionPresentation(), now: fixture.now,
+    );
+    try {
+      // When querying list and detail through the borrowing binding after reopening.
+      final listed = (await binding.listResources()).single;
+      final detail = await binding.getResource('unreported') as SubmissionStatusResourceRecord;
+      // Then byte placement is complete but absent independent proof has no success label.
+      expect(detail.value('operations'),
+        'Preparation: Succeeded (2/2)\nUpload: Succeeded (2/2)\n'
+        'Integrity verification: Not recorded\nTKL registration: Running\nStudio receipt: Not received');
+      expect(listed.value('operations'), detail.value('operations'));
+      expect(detail.status.tklProgress!.materialRef, isNull);
+      expect(binding.actionsFor(detail), isEmpty);
+      expect(detail.values.values.join(), isNot(contains('secret.invalid')));
+      expect(fixture.scheduler.calls, 0);
+      expect(fixture.storage.uploads, 0);
+      expect(fixture.transport.submits, 0);
+    } finally {
+      await binding.detach();
+      await fixture.dispose();
+    }
+  });
+  test('DU03 queued preparation exposes only the actual explicit request-run action', () async {
+    // Given partial durable hashing released back to its existing queue.
+    final fixture = await SubmissionFixture.create();
+    final queue = await fixture.openQueue();
+    await persistIntegrityScenario(fixture, queue, id: 'partial', prepared: 1);
+    await queue.release(id: 'partial', leaseToken: 'partial', now: fixture.clock);
+    final binding = SubmissionStatusBinding(
+      facade: SubmissionFacade(service: fixture.service(queue)),
+      presentationConfiguration: submissionPresentation(), now: fixture.now,
+    );
+    try {
+      // When reading the actual available commands.
+      final record = await binding.getResource('partial') as SubmissionStatusResourceRecord;
+      // Then no reset, reprepare or speculative retry action is invented.
+      expect(binding.actionsFor(record).map((action) => action.id), ['requestRun']);
+      expect(fixture.scheduler.calls, 0);
+      // Given the supported explicit command, When the operator requests a run.
+      await binding.execute('requestRun', record);
+      // Then only the existing scheduler is notified; UI does not dispatch bytes.
+      expect(fixture.scheduler.calls, 1);
+      expect(fixture.storage.prepares, 0);
+      expect(fixture.storage.uploads, 0);
+      expect(fixture.transport.submits, 0);
+    } finally {
+      await binding.detach();
+      await fixture.dispose();
+    }
+  });
   group('Fresh transfer resource queries and explicit actions', () {
     late SubmissionFixture fixture;
     late SqliteSubmissionQueueStore queue;

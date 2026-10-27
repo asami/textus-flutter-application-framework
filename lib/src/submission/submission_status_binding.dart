@@ -29,27 +29,47 @@ final class SubmissionStatusResourceRecord extends ResourceRecord {
       return reason == null ? '' : configuration.waitingReasonLabel(reason);
     }
 
+    String stage(SubmissionTransferOperationStatus? operation) {
+      if (operation == null) return 'Not recorded';
+      final label = configuration.operationStateLabel(operation.state);
+      final completed = operation.completedCount;
+      final total = operation.totalCount;
+      return completed == null || total == null
+          ? label
+          : '$label ($completed/$total)';
+    }
+
     final nextAttemptAt =
-        status.upload.nextAttemptAt ?? status.submission.nextAttemptAt;
+        status.registration?.nextAttemptAt ??
+        status.upload.nextAttemptAt ??
+        status.submission.nextAttemptAt;
     final acknowledgement = status.acknowledgement;
+    final lake = status.usesLakeDelivery;
+    final registration = status.registration;
+    final handoff = status.studioHandoff;
     return {
       'name': configuration.itemLabel(status),
-      'operations':
-          '${configuration.uploadLabel}: $upload\n'
-          '${configuration.submissionLabel}: $submission',
+      'operations': lake
+          ? 'Preparation: ${stage(status.preparation)}\nUpload: ${stage(status.upload)}\nIntegrity verification: ${stage(status.verification)}\nTKL registration: ${stage(registration)}\nStudio receipt: ${acknowledgement != null ? configuration.formatTime(acknowledgement.receivedAt) : handoff == null ? 'Not received' : submission}'
+          : '${configuration.uploadLabel}: $upload\n${configuration.submissionLabel}: $submission',
       'upload': upload,
-      'submission': submission,
-      'storageDestination': configuration.storageDestinationLabel(
-        status.storageConnectionId,
-      ),
-      'transportDestination': configuration.transportDestinationLabel(
-        status.transportConnectionId,
-      ),
+      'submission': lake && handoff == null
+          ? 'Not received (separate from TKL registration)'
+          : submission,
+      'storageDestination': lake
+          ? status.tklProgress?.destinationLabel ??
+                'Assigned by TKL during preparation'
+          : configuration.storageDestinationLabel(status.storageConnectionId),
+      'transportDestination': handoff == null
+          ? configuration.transportDestinationLabel(status.transportConnectionId)
+          : 'TKL source: ${configuration.transportDestinationLabel(status.transportConnectionId)}\nStudio handoff: ${configuration.transportDestinationLabel(handoff.target.id)} (${handoff.target.id})',
       'updatedAt': configuration.formatTime(status.updatedAt),
       'uploadWaiting': waiting(status.upload),
       'submissionWaiting': waiting(status.submission),
       'uploadFailure': status.upload.failure?.message ?? '',
-      'submissionFailure': status.submission.failure?.message ?? '',
+      'submissionFailure': lake && handoff == null
+          ? registration?.failure?.message ?? ''
+          : handoff?.failure?.message ?? status.submission.failure?.message ?? '',
       'nextAttemptAt': nextAttemptAt == null
           ? ''
           : configuration.formatTime(nextAttemptAt),
@@ -91,7 +111,45 @@ final class SubmissionStatusBinding
   /// Exact current command result; scheduling failure still means queued intent.
   SubmissionCommitResult? get lastActionResult => _lastActionResult;
 
-  ResourceListDetailConfiguration get configuration =>
+  /// Uses the same action reservation and detach join as ordinary queue actions.
+  /// The caller predicate fences selection and widget ownership across the read.
+  Future<RegisteredMaterialHandoffCommandResult> performRegisteredMaterialAction({
+    required String sourceRequestId,
+    required bool reconcile,
+    required bool Function() isCurrent,
+    required Future<RegisteredMaterialHandoffCommandResult> Function(
+      SubmissionTransferStatus status,
+    ) action,
+  }) {
+    if (_detached || _actionBusy || !isCurrent()) {
+      return Future.error(StateError('Studio handoff action is unavailable'));
+    }
+    _actionBusy = true;
+    return _accept(() async {
+      try {
+        final observation = _observation();
+        final fresh = await _facade.findTransferStatus(
+          sourceRequestId,
+          observedAt: observation.$1,
+          networkState: observation.$2,
+        );
+        _live();
+        if (!isCurrent() || fresh == null ||
+            !registeredMaterialActionAvailable(fresh, reconcile: reconcile)) {
+          throw StateError('Studio handoff action is no longer available');
+        }
+        _live();
+        return await action(fresh);
+      } finally {
+        _actionBusy = false;
+      }
+    });
+  }
+
+  ResourceListDetailConfiguration get configuration => configurationFor();
+
+  /// TKL detail uses one stage summary; generic consumers retain their fields.
+  ResourceListDetailConfiguration configurationFor({bool lake = false}) =>
       ResourceListDetailConfiguration(
         listTitle: presentationConfiguration.listTitle,
         detailTitle: presentationConfiguration.detailTitle,
@@ -103,11 +161,11 @@ final class SubmissionStatusBinding
             key: 'operations',
             label: 'Operations',
           ),
-          ResourceFieldConfiguration(
+          if (!lake) ResourceFieldConfiguration(
             key: 'upload',
             label: presentationConfiguration.uploadLabel,
           ),
-          ResourceFieldConfiguration(
+          if (!lake) ResourceFieldConfiguration(
             key: 'submission',
             label: presentationConfiguration.submissionLabel,
           ),
@@ -123,27 +181,27 @@ final class SubmissionStatusBinding
             key: 'updatedAt',
             label: 'Updated at',
           ),
-          const ResourceFieldConfiguration(
+          if (!lake) const ResourceFieldConfiguration(
             key: 'uploadWaiting',
             label: 'Upload waiting reason',
           ),
-          const ResourceFieldConfiguration(
+          if (!lake) const ResourceFieldConfiguration(
             key: 'submissionWaiting',
             label: 'Submission waiting reason',
           ),
-          const ResourceFieldConfiguration(
+          if (!lake) const ResourceFieldConfiguration(
             key: 'uploadFailure',
             label: 'Upload failure',
           ),
-          const ResourceFieldConfiguration(
+          if (!lake) const ResourceFieldConfiguration(
             key: 'submissionFailure',
             label: 'Submission failure',
           ),
-          const ResourceFieldConfiguration(
+          if (!lake) const ResourceFieldConfiguration(
             key: 'nextAttemptAt',
             label: 'Next attempt at',
           ),
-          const ResourceFieldConfiguration(
+          if (!lake) const ResourceFieldConfiguration(
             key: 'acknowledgement',
             label: 'Server acknowledgement',
           ),
@@ -296,4 +354,24 @@ final class SubmissionStatusBinding
     return _detachFuture ??= Future.wait<void>(_pending.toList())
         .then<void>((_) {});
   }
+}
+
+/// Pure availability from the observed durable source and handoff lifecycle.
+bool registeredMaterialActionAvailable(
+  SubmissionTransferStatus status, {
+  required bool reconcile,
+}) {
+  if (status.tklProgress?.state != TklMaterialDeliveryState.registered ||
+      status.registration?.state != SubmissionTransferOperationState.succeeded) {
+    return false;
+  }
+  final handoff = status.studioHandoff;
+  if (!reconcile) return handoff == null;
+  if (handoff == null) return false;
+  return handoff.state == RegisteredMaterialHandoffState.pending ||
+      handoff.state == RegisteredMaterialHandoffState.failed ||
+      handoff.state == RegisteredMaterialHandoffState.outcomeUnknown ||
+      (handoff.state == RegisteredMaterialHandoffState.sending &&
+          handoff.leaseExpiresAt != null &&
+          !handoff.leaseExpiresAt!.isAfter(status.observedAt));
 }
