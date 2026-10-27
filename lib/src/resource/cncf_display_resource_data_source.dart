@@ -12,14 +12,19 @@ final class CncfDisplayResourceDataSource implements ResourceDataSource {
   final CncfDisplayReadClient client;
   CncfDisplayRead? _lastQuery;
   CncfDisplayRead? _lastDetail;
+  CncfDisplayRead? _lastDisplay;
   CncfDisplayRead? get lastQuery => _lastQuery;
   CncfDisplayRead? get lastDetail => _lastDetail;
+
+  /// Latest completely projected accepted read, in actual completion order.
+  CncfDisplayRead? get lastDisplay => _lastDisplay;
 
   @override
   Future<List<ResourceRecord>> listResources() async {
     final result = await client.query();
     final records = result.resources.map(_record).toList(growable: false);
     _lastQuery = result;
+    _lastDisplay = result;
     return List.unmodifiable(records);
   }
 
@@ -28,6 +33,7 @@ final class CncfDisplayResourceDataSource implements ResourceDataSource {
     final result = await client.read(id);
     final record = _record(result.resources.single);
     _lastDetail = result;
+    _lastDisplay = result;
     return record;
   }
 

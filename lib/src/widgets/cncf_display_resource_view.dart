@@ -5,6 +5,7 @@ import 'package:textus_flutter_core/textus_flutter_core.dart';
 
 import '../configuration/resource_list_detail_configuration.dart';
 import '../display/cncf_display_mutation_controller.dart';
+import '../display/cncf_display_presentation_registry.dart';
 import '../resource/resource_view_model.dart';
 import '../view/resource_list_detail_display_model.dart';
 import 'resource_list_detail.dart';
@@ -16,12 +17,14 @@ class CncfDisplayResourceView extends StatefulWidget {
     required this.viewModel,
     required this.mutationController,
     this.displayModel,
+    this.presentationRegistry,
     super.key,
   });
   final ResourceListDetailConfiguration configuration;
   final ResourceViewModel viewModel;
   final CncfDisplayMutationController mutationController;
   final ResourceListDetailDisplayModel? displayModel;
+  final CncfDisplayPresentationRegistry? presentationRegistry;
 
   @override
   State<CncfDisplayResourceView> createState() =>
@@ -32,16 +35,24 @@ class _CncfDisplayResourceViewState extends State<CncfDisplayResourceView> {
   int _session = 0;
   bool _routeOpen = false;
   MaterialPageRoute<void>? _editorRoute;
+  ResourceListDetailConfiguration? _lastAvailableConfiguration;
 
   @override
   void initState() {
     super.initState();
     widget.mutationController.addListener(_changed);
+    widget.viewModel.addListener(_changed);
   }
 
   @override
   void didUpdateWidget(CncfDisplayResourceView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.presentationRegistry != widget.presentationRegistry ||
+        oldWidget.configuration != widget.configuration ||
+        oldWidget.mutationController != widget.mutationController ||
+        oldWidget.viewModel != widget.viewModel) {
+      _lastAvailableConfiguration = null;
+    }
     if (oldWidget.mutationController != widget.mutationController ||
         oldWidget.viewModel != widget.viewModel) {
       ++_session;
@@ -51,6 +62,10 @@ class _CncfDisplayResourceViewState extends State<CncfDisplayResourceView> {
     if (oldWidget.mutationController != widget.mutationController) {
       oldWidget.mutationController.removeListener(_changed);
       widget.mutationController.addListener(_changed);
+    }
+    if (oldWidget.viewModel != widget.viewModel) {
+      oldWidget.viewModel.removeListener(_changed);
+      widget.viewModel.addListener(_changed);
     }
   }
 
@@ -65,6 +80,7 @@ class _CncfDisplayResourceViewState extends State<CncfDisplayResourceView> {
     ++_session;
     _retireRoute();
     widget.mutationController.removeListener(_changed);
+    widget.viewModel.removeListener(_changed);
     super.dispose();
   }
 
@@ -82,16 +98,41 @@ class _CncfDisplayResourceViewState extends State<CncfDisplayResourceView> {
     });
   }
 
-  void _edit() {
-    final controller = widget.mutationController;
-    if (_routeOpen ||
+  CncfDisplayPresentationResolution? get _presentationResolution => widget
+      .presentationRegistry
+      ?.resolve(widget.mutationController.source.lastDisplay);
+
+  bool get _presentationAvailable =>
+      _presentationResolution?.isAvailable ?? true;
+
+  bool _allowsBusiness(CncfDisplayBusinessBinding binding) {
+    final resolution = _presentationResolution;
+    if (resolution != null && !resolution.isAvailable) return false;
+    final configuration = resolution?.configuration ?? widget.configuration;
+    final actions = configuration.detailActions;
+    return actions == null ||
+        actions.any((action) => action.id == binding.actionId);
+  }
+
+  void _edit(
+    CncfDisplayMutationController controller,
+    ResourceViewModel viewModel,
+    int session,
+  ) {
+    if (!mounted ||
+        session != _session ||
+        !identical(widget.mutationController, controller) ||
+        !identical(widget.viewModel, viewModel) ||
+        !identical(viewModel, controller.viewModel) ||
+        !_presentationAvailable ||
+        _routeOpen ||
         controller.busy ||
         controller.isDisposed ||
         controller.needsReconciliation ||
         controller.editorOpen) {
       return;
     }
-    final session = ++_session;
+    final editorSession = ++_session;
     _routeOpen = true;
     final route = MaterialPageRoute<void>(
       fullscreenDialog: true,
@@ -99,7 +140,7 @@ class _CncfDisplayResourceViewState extends State<CncfDisplayResourceView> {
         controller: controller,
         isCurrent: () =>
             mounted &&
-            session == _session &&
+            editorSession == _session &&
             identical(widget.mutationController, controller),
       ),
     );
@@ -109,7 +150,7 @@ class _CncfDisplayResourceViewState extends State<CncfDisplayResourceView> {
       Navigator.of(context).push(route).then((_) {
         if (identical(_editorRoute, route)) {
           _editorRoute = null;
-          if (mounted && session == _session) {
+          if (mounted && editorSession == _session) {
             setState(() {
               _routeOpen = false;
             });
@@ -122,14 +163,16 @@ class _CncfDisplayResourceViewState extends State<CncfDisplayResourceView> {
   Future<void> _executeBusiness(
     CncfDisplayMutationController controller,
     CncfDisplayBusinessBinding binding,
+    int session,
   ) async {
     if (!mounted ||
+        session != _session ||
         !identical(widget.mutationController, controller) ||
         !identical(widget.viewModel, controller.viewModel) ||
-        controller.isDisposed) {
+        controller.isDisposed ||
+        !_allowsBusiness(binding)) {
       return;
     }
-    final session = _session;
     final accepted = await controller.executeBusiness(binding);
     if (!accepted ||
         !mounted ||
@@ -142,8 +185,36 @@ class _CncfDisplayResourceViewState extends State<CncfDisplayResourceView> {
     await controller.reload();
   }
 
-  List<Widget> _businessButtons(CncfDisplayMutationController controller) {
-    final configured = widget.configuration.detailActions;
+  Future<void> _reloadPresentation(
+    CncfDisplayMutationController controller,
+    ResourceViewModel viewModel,
+    int session,
+  ) async {
+    if (!mounted ||
+        session != _session ||
+        !identical(widget.mutationController, controller) ||
+        !identical(widget.viewModel, viewModel) ||
+        !identical(viewModel, controller.viewModel) ||
+        controller.isDisposed ||
+        controller.busy ||
+        viewModel.listLoading ||
+        viewModel.detailLoading) {
+      return;
+    }
+    if (controller.needsReconciliation) {
+      await controller.reload();
+    } else {
+      await viewModel.load();
+    }
+  }
+
+  List<Widget> _businessButtons(
+    CncfDisplayMutationController controller,
+    ResourceListDetailConfiguration configuration,
+    bool available,
+    int session,
+  ) {
+    final configured = configuration.detailActions;
     return [
       for (final binding in controller.businessBindings)
         if (controller.businessAvailability(binding) case final availability?)
@@ -152,8 +223,8 @@ class _CncfDisplayResourceViewState extends State<CncfDisplayResourceView> {
                   configured.any((action) => action.id == binding.actionId)))
             TextButton(
               key: Key('cncf-display-business-${binding.actionId}'),
-              onPressed: controller.canInvokeBusiness(binding)
-                  ? () => _executeBusiness(controller, binding)
+              onPressed: available && controller.canInvokeBusiness(binding)
+                  ? () => _executeBusiness(controller, binding, session)
                   : null,
               child: Text(
                 configured == null
@@ -176,6 +247,20 @@ class _CncfDisplayResourceViewState extends State<CncfDisplayResourceView> {
   @override
   Widget build(BuildContext context) {
     final controller = widget.mutationController;
+    final viewModel = widget.viewModel;
+    final session = _session;
+    final resolution = _presentationResolution;
+    final available = resolution?.isAvailable ?? true;
+    if (available) {
+      _lastAvailableConfiguration =
+          resolution?.configuration ?? widget.configuration;
+    }
+    // This retained configuration only keeps the common State mounted beneath
+    // an opaque unavailable surface; it never substitutes a visible variant.
+    final configuration =
+        _lastAvailableConfiguration ??
+        widget.presentationRegistry?.neutralConfiguration ??
+        widget.configuration;
     final running = controller.businessRunning && !controller.isDisposed;
     return PopScope<Object?>(
       canPop: !running,
@@ -198,54 +283,99 @@ class _CncfDisplayResourceViewState extends State<CncfDisplayResourceView> {
         fit: StackFit.expand,
         children: [
           AbsorbPointer(
-            absorbing: running,
-            // The existing compact Back scope must not change presentation
-            // while the outer command owner protects this route.
-            child: TickerMode(
-              enabled: !running,
-              child: ResourceListDetail(
-                configuration: widget.configuration,
-                viewModel: widget.viewModel,
-                displayModel: widget.displayModel,
-                detailSupplementBuilder: (_, record) => Column(
-                  children: [
-                    _Result(controller: controller),
-                    ..._businessButtons(controller),
-                    TextButton(
-                      key: const Key('cncf-display-edit'),
-                      onPressed:
-                          controller.busy ||
-                              controller.isDisposed ||
-                              controller.needsReconciliation ||
-                              controller.editorOpen ||
-                              _routeOpen
-                          ? null
-                          : _edit,
-                      child: const Text('Edit'),
+            absorbing: running || !available,
+            child: ExcludeSemantics(
+              excluding: !available,
+              child: ExcludeFocus(
+                excluding: !available,
+                // The existing compact Back scope must not change presentation
+                // while the outer command owner protects this route.
+                child: TickerMode(
+                  enabled: !running,
+                  child: ResourceListDetail(
+                    configuration: configuration,
+                    viewModel: widget.viewModel,
+                    displayModel: widget.displayModel,
+                    detailSupplementBuilder: (_, record) => Column(
+                      children: [
+                        _Result(controller: controller),
+                        ..._businessButtons(
+                          controller,
+                          configuration,
+                          available,
+                          session,
+                        ),
+                        TextButton(
+                          key: const Key('cncf-display-edit'),
+                          onPressed:
+                              !available ||
+                                  controller.busy ||
+                                  controller.isDisposed ||
+                                  controller.needsReconciliation ||
+                                  controller.editorOpen ||
+                                  _routeOpen
+                              ? null
+                              : () => _edit(controller, viewModel, session),
+                          child: const Text('Edit'),
+                        ),
+                      ],
                     ),
-                  ],
+                    additionalActions: [
+                      if ((controller.businessOperation != null ||
+                              controller.receipt != null) &&
+                          widget.viewModel.detailFailed)
+                        SizedBox(
+                          width: 260,
+                          child: FittedBox(
+                            child: _Result(controller: controller),
+                          ),
+                        ),
+                      if (controller.needsReconciliation)
+                        IconButton(
+                          key: const Key('cncf-display-reload'),
+                          tooltip: 'Reload',
+                          onPressed: controller.busy || controller.isDisposed
+                              ? null
+                              : controller.reload,
+                          icon: const Icon(Icons.refresh),
+                        ),
+                    ],
+                  ),
                 ),
-                additionalActions: [
-                  if ((controller.businessOperation != null ||
-                          controller.receipt != null) &&
-                      widget.viewModel.detailFailed)
-                    SizedBox(
-                      width: 260,
-                      child: FittedBox(child: _Result(controller: controller)),
-                    ),
-                  if (controller.needsReconciliation)
-                    IconButton(
-                      key: const Key('cncf-display-reload'),
-                      tooltip: 'Reload',
-                      onPressed: controller.busy || controller.isDisposed
-                          ? null
-                          : controller.reload,
-                      icon: const Icon(Icons.refresh),
-                    ),
-                ],
               ),
             ),
           ),
+          if (!available)
+            Positioned.fill(
+              child: BlockSemantics(
+                child: Material(
+                  color: Theme.of(context).colorScheme.surface.withAlpha(255),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('This screen configuration is unavailable.'),
+                        TextButton(
+                          key: const Key('cncf-display-presentation-reload'),
+                          onPressed:
+                              controller.busy ||
+                                  controller.isDisposed ||
+                                  viewModel.listLoading ||
+                                  viewModel.detailLoading
+                              ? null
+                              : () => _reloadPresentation(
+                                  controller,
+                                  viewModel,
+                                  session,
+                                ),
+                          child: const Text('Reload'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
           if (running)
             const Positioned(
               top: 0,

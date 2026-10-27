@@ -70,6 +70,7 @@ final class CncfDisplayMutationFixture {
   CncfDisplayMutationFixture({
     Duration timeout = const Duration(seconds: 3),
     List<CncfDisplayBusinessBinding> businessBindings = const [],
+    this.presentationContext,
   }) {
     final initial = mutationFixture('detail-initial');
     id = ((initial['model']! as Map)['resource'] as Map)['entityId']! as String;
@@ -170,6 +171,8 @@ final class CncfDisplayMutationFixture {
   bool pending = false;
   bool failRead = false;
   bool failQuery = false;
+  // Controlled family decoration, not a genuine golden or live authority.
+  Map<String, Object?>? presentationContext;
   String? queryRevision;
   bool missingTitle = false;
   bool reviewed = false;
@@ -212,6 +215,9 @@ final class CncfDisplayMutationFixture {
 
   Map<String, Object?> readWire({required bool detail}) {
     final wire = mutationFixture(detail ? 'detail-initial' : 'list-initial');
+    if (presentationContext != null) {
+      wire['presentationContext'] = presentationContext;
+    }
     final model = wire['model']! as Map;
     final resource = detail
         ? model['resource'] as Map

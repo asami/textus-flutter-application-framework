@@ -60,6 +60,7 @@ export 'src/widgets/recognition_comparison_view.dart';
 export 'src/display/display_definition_registry.dart';
 export 'src/display/display_presentation_controller.dart';
 export 'src/display/cncf_display_mutation_controller.dart';
+export 'src/display/cncf_display_presentation_registry.dart';
 export 'src/widgets/cncf_display_resource_view.dart';
 export 'src/widgets/display_session_view.dart';
 
