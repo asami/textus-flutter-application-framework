@@ -637,4 +637,100 @@ void main() {
     expect(h.controller.retainedAudioReviews.values.single.revisions.last.text, ' exact A transcript\n');
     expect(h.controller.workspace.regions.first.comments.single.text, 'A unchanged');
   });
+
+  testWidgets('P18 physical unbound manual Save leaves generic pending audio for its original common Retry', (tester) async {
+    // Given separate common generic audio controls and a confirmed region with no bound audio target.
+    await confirm(tester);
+    final generic = (await tester.runAsync(() async => AudioCaptureController(
+      facade: h.audioFacade, now: () => ImageRegionFixture.time)))!;
+    final changes = <ImageRegionEditorChange>[];
+    final saves = <ImageRegionEditorChange>[];
+    final audioReviews = <AudioTranscriptReview>[];
+    Finder region(String suffix) => find.descendant(
+      of: find.byKey(const ValueKey('unbound-region-panel')), matching: key(suffix));
+    Finder audio(String suffix) => find.descendant(
+      of: find.byKey(const ValueKey('generic-audio-panel')),
+      matching: find.byKey(ValueKey('audio-capture-$suffix')));
+    Future<void> pressAudio(String suffix, bool Function() doneWhen) async {
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(audio(suffix));
+      await tester.pumpAndSettle();
+      await tester.runAsync(() async {
+        final done = Completer<void>();
+        void settled() {
+          if (doneWhen() && !done.isCompleted) done.complete();
+        }
+        generic.addListener(settled);
+        try {
+          await tester.tap(audio(suffix));
+          settled();
+          await done.future.timeout(const Duration(seconds: 5));
+        } finally {
+          generic.removeListener(settled);
+        }
+      });
+      await tester.pumpAndSettle();
+    }
+    await tester.pumpWidget(MaterialApp(home: Scaffold(body: SingleChildScrollView(
+      child: Column(children: [
+        ImageRegionEditorPanel(key: const ValueKey('unbound-region-panel'),
+          controller: h.controller, onChanged: changes.add,
+          onSave: (value) async { saves.add(value); }),
+        AudioCapturePanel(key: const ValueKey('generic-audio-panel'),
+          controller: generic, onReviewChanged: audioReviews.add),
+      ])))));
+    await pressAudio('record', () => generic.recordingStarted);
+    h.store.audioSaveError = StateError('generic common Stop import failure');
+    final savesBefore = h.store.saves;
+    await pressAudio('stop', () => !generic.busy);
+    final pending = h.audioFacade.pendingOriginal!;
+    expect(audioReviews, isEmpty);
+    expect(h.controller.audioController, isNull);
+    expect(h.controller.audioTarget, isNull);
+    // When the user enters manual fields, explicitly checks the source and physically taps Save passage.
+    await tester.ensureVisible(region('quotation'));
+    await tester.pumpAndSettle();
+    await tester.enterText(region('quotation'), '  manual 原文\n');
+    await pressFinder(tester, region('source-check'));
+    await tester.ensureVisible(region('comment'));
+    await tester.pumpAndSettle();
+    await tester.enterText(region('comment'), ' independent manual comment ');
+    await pressFinder(tester, region('save'));
+    // Then one immutable manual change saves without consuming, importing or linking foreign audio.
+    expect(saves.length, 1);
+    expect(changes.length, 1);
+    final entry = saves.single.workspace.regions.single;
+    expect(entry.quotations.single.text, '  manual 原文\n');
+    expect(entry.quotations.single.sourceConfirmed, isTrue);
+    expect(entry.comments.single.text, ' independent manual comment ');
+    expect(entry.audioLinks, isEmpty);
+    expect(saves.single.audioReviews, isEmpty);
+    expect(h.controller.retainedAudioReviews, isEmpty);
+    expect(h.controller.ownsPendingAudio, isFalse);
+    expect(h.audioFacade.pendingOriginal, same(pending));
+    expect(h.store.saves, savesBefore);
+    expect(find.text('Save completed'), findsOneWidget);
+    // When the separate original common controls explicitly retry after storage recovers.
+    h.store.audioSaveError = null;
+    await pressAudio('retry-save', () => !generic.busy);
+    // Then exact original bytes reach only the generic review, with no recapture or region adoption.
+    final review = audioReviews.single;
+    expect(generic.review, same(review));
+    expect(h.store.materials[review.original.material.id], orderedEquals(pending.bytes));
+    expect(h.audioFacade.pendingOriginal, isNull);
+    expect(h.store.saves, savesBefore + 1);
+    expect(h.controller.audioReviews, isEmpty);
+    expect(h.controller.currentEntry!.audioLinks, isEmpty);
+    expect(changes.length, 1);
+    expect(saves.length, 1);
+    expect(h.audio.starts, 1);
+    expect(h.audio.stops, 1);
+    expect(h.audio.probes + h.audio.preparations + h.audio.transcriptions, 0);
+    expect(h.ocr.inputs, isEmpty);
+    expect(h.ai.inputs, isEmpty);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.runAsync(() => generic.detach().timeout(const Duration(seconds: 5)));
+    generic.dispose();
+    expect(h.audio.disposals, 0);
+  });
 }

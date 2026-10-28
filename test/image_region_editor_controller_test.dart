@@ -765,6 +765,13 @@ void main() {
     expect(h.audioFacade.pendingOriginal, same(pending));
     expect(h.store.saves, savedCount);
     h.controller.setCommentText('manual text still editable');
+    // Then a bound pending original still blocks all-target Save without adopting manual text.
+    final beforeSave = h.controller.workspace;
+    expect(h.controller.commitTextDrafts, throwsStateError);
+    expect(h.controller.workspace, same(beforeSave));
+    expect(h.controller.currentEntry!.comments, isEmpty);
+    expect(h.controller.commentDirty, isTrue);
+    // When the initiating common child retries the exact original after storage recovers.
     h.store.audioSaveError = null;
     final actual = await child.retryPendingOriginal().timeout(const Duration(seconds: 5));
     h.controller.attachAudioReview(actual, target: target);
@@ -949,6 +956,60 @@ void main() {
     await other.detach().timeout(const Duration(seconds: 5));
     other.dispose();
     expect(h.audioFacade.pendingOriginal, same(pending));
+    expect(h.audio.disposals, 0);
+  });
+
+  test('R30 unbound all-target manual Save preserves foreign pending audio for its generic initiating controls', () async {
+    // Given a confirmed region without audio controls and a separate generic recording whose import fails.
+    await h.confirm();
+    final generic = AudioCaptureController(facade: h.audioFacade, now: () => ImageRegionFixture.time);
+    await generic.startRecording().timeout(const Duration(seconds: 5));
+    h.store.audioSaveError = StateError('generic audio import failure');
+    final savesBefore = h.store.saves;
+    await expectLater(generic.stopRecording().timeout(const Duration(seconds: 5)), throwsStateError);
+    final pending = h.audioFacade.pendingOriginal!;
+    expect(h.controller.audioController, isNull);
+    expect(h.controller.audioTarget, isNull);
+    expect(h.controller.ownsPendingAudio, isFalse);
+    h.controller.setQuotationText('  manual 原文\n ');
+    h.controller.setCommentText(' independent comment\n');
+    final before = h.controller.workspace;
+    // When all-target Save first fails the quotation check, then succeeds after explicit confirmation.
+    expect(h.controller.commitTextDrafts, throwsStateError);
+    expect(h.controller.workspace, same(before));
+    expect(h.controller.currentEntry!.comments, isEmpty);
+    h.controller.setSourceConfirmed(true);
+    final saved = h.controller.commitTextDrafts();
+    // Then exact manual histories save together without adopting or consuming another owner's pending original.
+    final entry = saved.workspace.regions.single;
+    expect(entry.quotations.single.text, '  manual 原文\n ');
+    expect(entry.quotations.single.sourceConfirmed, isTrue);
+    expect(entry.quotations.single.origin, RegionTextOrigin.manual);
+    expect(entry.comments.single.text, ' independent comment\n');
+    expect(entry.comments.single.origin, RegionTextOrigin.manual);
+    expect(entry.audioLinks, isEmpty);
+    expect(saved.audioReviews, isEmpty);
+    expect(h.controller.retainedAudioReviews, isEmpty);
+    expect(h.audioFacade.pendingOriginal, same(pending));
+    expect(h.store.saves, savesBefore);
+    expect(h.controller.hasUnsavedText, isFalse);
+    // When the separate generic owner explicitly retries the exact original after storage recovers.
+    h.store.audioSaveError = null;
+    final actual = await generic.retryPendingOriginal().timeout(const Duration(seconds: 5));
+    // Then only its own common review receives the import; the region remains manual and unlinked.
+    expect(h.store.materials[actual.original.material.id], orderedEquals(pending.bytes));
+    expect(generic.review, same(actual));
+    expect(h.audioFacade.pendingOriginal, isNull);
+    expect(h.store.saves, savesBefore + 1);
+    expect(h.controller.audioReviews, isEmpty);
+    expect(h.controller.currentEntry!.audioLinks, isEmpty);
+    expect(h.audio.starts, 1);
+    expect(h.audio.stops, 1);
+    expect(h.audio.transcriptions + h.audio.preparations + h.audio.probes, 0);
+    expect(h.ocr.inputs, isEmpty);
+    expect(h.ai.inputs, isEmpty);
+    await generic.detach().timeout(const Duration(seconds: 5));
+    generic.dispose();
     expect(h.audio.disposals, 0);
   });
 }

@@ -432,7 +432,7 @@ final class ImageRegionEditorController implements Listenable {
     final target = _audioTarget;
     final token = _generation;
     if (only == null && (_audioReplacing || (child?.busy ?? false) ||
-        audioFacade?.pendingOriginal != null)) {
+        (_audioTarget != null && audioFacade?.pendingOriginal != null))) {
       throw StateError('Finish the audio operation or save the pending original before saving the passage');
     }
     if (child != null && (child.isDetached || child.isDisposed || target == null ||

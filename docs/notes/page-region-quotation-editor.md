@@ -119,6 +119,11 @@ shared service state alone does not establish ownership. Common audio commands
 deny a foreign pending original, including Retry on an idle child opened by another
 borrower before the failure. Opening audio rejects preexisting pending bytes.
 A fresh editor without an audio target can still use its manual region/text route.
+Pending import blocks all-target Save when the region has a bound audio target.
+Without a bound audio target, the region can save its source-checked manual
+quotation and independent comment while another borrower's pending bytes remain
+unchanged and unclaimed. Recovery still belongs to that original borrower's common
+controls; manual Save neither imports those bytes nor links their review to a region.
 Terminal retirement clears local capture ownership without deleting borrowed
 pending bytes; a new source owner cannot infer their target or claim recovery.
 
