@@ -17,6 +17,11 @@ export 'src/submission/submission_status_overview_controller.dart';
 export 'src/submission/submission_status_summary_panel.dart';
 
 export 'src/capture/capture_storage_facade.dart';
+export 'src/capture/image_region_facade.dart';
+export 'src/capture/image_region_editor_controller.dart';
+export 'src/capture/image_region_viewport.dart';
+export 'src/widgets/image_region_selector.dart';
+export 'src/widgets/image_region_editor_panel.dart';
 export 'src/capture/audio_capture_facade.dart';
 export 'src/capture/audio_capture_controller.dart';
 export 'src/capture/photo_capture_facade.dart';

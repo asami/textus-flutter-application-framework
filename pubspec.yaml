@@ -17,6 +17,7 @@ dependencies:
     path: ../textus-flutter-core
 
 dev_dependencies:
+  image: 4.3.0
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
