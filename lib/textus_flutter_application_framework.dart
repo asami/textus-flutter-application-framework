@@ -2,6 +2,8 @@
 library;
 
 export 'src/widgets/structured_candidate_review_panel.dart';
+export 'src/capture/generated_draft_controller.dart';
+export 'src/widgets/generated_draft_review_panel.dart';
 
 export 'src/submission/submission_facade.dart';
 export 'src/submission/tkl_material_delivery_facade.dart';
