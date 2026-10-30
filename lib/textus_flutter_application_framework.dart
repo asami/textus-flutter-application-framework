@@ -1,6 +1,13 @@
 /// Reusable, configuration-driven application UI for Textus Flutter apps.
 library;
 
+export 'src/retrieval/material_retrieval_controller.dart';
+export 'src/widgets/material_retrieval_panel.dart';
+
+export 'src/widgets/structured_candidate_review_panel.dart';
+export 'src/capture/generated_draft_controller.dart';
+export 'src/widgets/generated_draft_review_panel.dart';
+
 export 'src/submission/submission_facade.dart';
 export 'src/submission/tkl_material_delivery_facade.dart';
 export 'src/submission/submission_configuration_facade.dart';
@@ -17,6 +24,11 @@ export 'src/submission/submission_status_overview_controller.dart';
 export 'src/submission/submission_status_summary_panel.dart';
 
 export 'src/capture/capture_storage_facade.dart';
+export 'src/capture/image_region_facade.dart';
+export 'src/capture/image_region_editor_controller.dart';
+export 'src/capture/image_region_viewport.dart';
+export 'src/widgets/image_region_selector.dart';
+export 'src/widgets/image_region_editor_panel.dart';
 export 'src/capture/audio_capture_facade.dart';
 export 'src/capture/audio_capture_controller.dart';
 export 'src/capture/photo_capture_facade.dart';
