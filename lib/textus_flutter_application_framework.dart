@@ -1,6 +1,8 @@
 /// Reusable, configuration-driven application UI for Textus Flutter apps.
 library;
 
+export 'src/widgets/structured_candidate_review_panel.dart';
+
 export 'src/submission/submission_facade.dart';
 export 'src/submission/tkl_material_delivery_facade.dart';
 export 'src/submission/submission_configuration_facade.dart';
