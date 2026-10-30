@@ -2,8 +2,9 @@
 
 `GeneratedDraftController` borrows the public Core `GeneratedDraftService` and
 owns one owner's additive `GeneratedDraftWorkspace`. `GeneratedDraftReviewPanel`
-borrows that controller and provides common image-description/text-summary
-commands and explicit accept, edit, clear and discard review. These products are
+borrows that controller and provides common image-description, text-summary,
+text-proofreading and personal-annotation readability commands with explicit
+accept, edit, clear and discard review. These products are
 generated drafts. Original text, images, transcripts and human commentary remain
 caller-owned sources; a generated draft never overwrites them.
 
@@ -18,6 +19,9 @@ final controller = GeneratedDraftController(
   onWorkspaceChanged: persistForThisOwner,
 );
 controller.selectSource(exactSource, imageBytes: exactImageBytes);
+// For an explicit text revision, choose the semantic target in the caller:
+controller.selectSource(exactTextSource,
+  operation: GeneratedDraftOperation.textProofreading);
 // Render GeneratedDraftReviewPanel(controller: controller).
 // On owner retirement: await controller.detach(); then inspect its workspace.
 // When the owner no longer needs it: controller.dispose();
@@ -31,6 +35,23 @@ exact semantic value under Core's workspace identity contract. The caller must
 advance its context revision whenever a human change invalidates an in-flight
 draft, even when its selected source does not change.
 
+`selectSource` accepts the optional named `GeneratedDraftOperation? operation`.
+Omitting it or passing null retains the existing defaults: `imageDescription`
+for images and `textSummary` for text. An explicit operation is admitted through
+Core's public `GeneratedDraftRequest` before any selection state changes or
+provider call. Image operations still require nonempty exact image bytes; text
+operations require text without image bytes. A null source requires both null
+bytes and null operation. Invalid combinations leave selection, operation,
+generation, readiness, errors and provider activity untouched. The read-only
+`controller.operation` exposes the admitted selection, or null without a source.
+
+Text proofreading is labeled `原文の校正`; readability is labeled
+`個人注釈の文章改善` and explicitly describes its rewrite as something other than
+a verbatim quotation. The caller must restrict `textReadability` to personal
+annotations. The shared controller/panel cannot resolve Book semantic targets,
+choose eligible fields or decide whether source text is a quotation. No dropdown,
+automatic generation or automatic conversion between these intentions is provided.
+
 Construction, selection and mounting perform no service IO. Checking readiness
 is explicit. Model preparation is a separate action offered for downloadable
 availability; Core preserves unavailable, unsupported and preparing reasons and
@@ -40,7 +61,14 @@ provider, model, prompt and terminal diagnostics.
 
 The controller marks work busy before notifying listeners and rechecks admission
 before launching. Only one owned command may run at a time. Source changes retire
-the selected generation and request cancellation of owned inference. Probe and
+the selected generation and request cancellation of owned inference. Changing
+only the operation on the same source/bytes is also a selection change: it
+advances the generation, clears readiness/errors, notifies and retires owned
+inference through the same cancellation/cleanup path. An equivalent source,
+bytes and admitted operation is a no-op, including when the old operation was
+selected by the default. Each command captures its exact admitted operation
+before notifications; probe, preparation and generation retain that operation
+even if listeners or later caller actions replace the selection. Probe and
 preparation cannot be canceled. Cancel remains available for owned inference even
 when human interaction is disabled. Busy lasts until the service finishes both
 inference and cancellation cleanup. Provider failure/cancellation and cleanup
@@ -61,6 +89,28 @@ the source need not be the presently selected source. An obsolete source can
 still be discarded. Empty edited text is an intentional derived clear. Decisions
 append history and preserve the original/raw generation evidence. Injected clocks
 must return actual UTC times at or after completion; invalid time fails explicitly.
+
+Every proposal and adopted result is labeled from its own attempt's operation,
+independently of the current selection. A still-current proofreading proposal
+can be adopted after readability or another source is selected, using fresh
+render authority. Selecting another intention never relabels retained history.
+
+Proofreading/readability review shows exact original and unedited raw proposal.
+Adopted review also shows the selected adopted text, including an explicit empty
+edit. Both use public Core `TextRevisionComparison.between` to inspect the exact
+original against the pending proposal or selected adopted whole text. The panel
+labels unchanged boundaries, removed/replaced original text and inserted proposed
+text; equal strings explicitly say `変更なし`. Whitespace, newlines and Unicode
+remain exact. This is one inspection window, with whole-text adoption; it promises
+neither minimal differences nor individually selectable hunks. Existing image and
+summary routes keep their labels, action keys and uncluttered presentation.
+
+Stale source/context results retain their actual raw output. The panel explains
+that changed current text/context requires regenerating from current text and
+reviewing, or manually reconciling content. Canceled output cannot be adopted;
+obsolete pending source evidence permits discard while accept/edit remain disabled.
+Caller `sourceIsCurrent` and `contextRevision` guards must reflect concurrent human
+edits. The generic panel never applies text to or overwrites caller-owned sources.
 
 The panel subscribes to the current controller without owning its lifecycle.
 Retained button closures and edit dialogs capture the original controller, owner,

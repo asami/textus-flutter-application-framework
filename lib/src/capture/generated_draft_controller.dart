@@ -38,6 +38,7 @@ final class GeneratedDraftController implements Listenable {
   final Set<String> _issuedIds = {};
   GeneratedDraftWorkspace _workspace;
   GeneratedDraftSource? _source;
+  GeneratedDraftOperation? _operation;
   Uint8List? _imageBytes;
   GeneratedDraftAvailability? _readiness;
   Object? _error;
@@ -56,8 +57,7 @@ final class GeneratedDraftController implements Listenable {
   GeneratedDraftWorkspace get workspace => _workspace;
   GeneratedDraftSource? get source => _source;
   Uint8List? get imageBytes => _imageBytes;
-  GeneratedDraftOperation? get operation => _source == null
-      ? null : _operationFor(_source!);
+  GeneratedDraftOperation? get operation => _operation;
   GeneratedDraftAvailability? get readiness => _readiness;
   Object? get error => _error;
   bool get busy => _ownedOperation != null;
@@ -71,19 +71,28 @@ final class GeneratedDraftController implements Listenable {
   bool get _live => !_detached && !_disposed;
 
   /// Selection is inert, but retires an owned inference without releasing busy.
-  void selectSource(GeneratedDraftSource? source, {Uint8List? imageBytes}) {
+  void selectSource(GeneratedDraftSource? source, {
+    Uint8List? imageBytes,
+    GeneratedDraftOperation? operation,
+  }) {
     _requireLive();
     if (_publishing) throw StateError('Cannot select during publication');
     if (source == null) {
       if (imageBytes != null) throw ArgumentError('No source requires no bytes');
+      if (operation != null) throw ArgumentError('An operation requires a source');
     } else {
       GeneratedDraftRequest(id: 'selection-validation',
-        operation: _operationFor(source), source: source, imageBytes: imageBytes);
+        operation: operation ?? _operationFor(source), source: source,
+        imageBytes: imageBytes);
     }
-    if (_sameSource(source, _source) && listEquals(imageBytes, _imageBytes)) {
+    final selectedOperation = source == null ? null
+        : operation ?? _operationFor(source);
+    if (_sameSource(source, _source) && listEquals(imageBytes, _imageBytes) &&
+        selectedOperation == _operation) {
       return;
     }
     _source = source;
+    _operation = selectedOperation;
     _imageBytes = imageBytes == null ? null
         : Uint8List.fromList(imageBytes).asUnmodifiableView();
     _generation++;
@@ -94,22 +103,22 @@ final class GeneratedDraftController implements Listenable {
   }
 
   Future<GeneratedDraftAvailability> checkAvailability() =>
-      _command('probe', (source, token, revision) async {
-        final value = await _service.availability(operation: _operationFor(source));
-        if (_matches(source, token, revision)) _readiness = value;
+      _command('probe', (source, operation, token, revision) async {
+        final value = await _service.availability(operation: operation);
+        if (_matches(source, operation, token, revision)) _readiness = value;
         return value;
       });
 
   /// Core checks whether downloading is appropriate; this never runs on mount.
   Future<GeneratedDraftAvailability> prepare() =>
-      _command('prepare', (source, token, revision) async {
-        final value = await _service.prepare(operation: _operationFor(source));
-        if (_matches(source, token, revision)) _readiness = value;
+      _command('prepare', (source, operation, token, revision) async {
+        final value = await _service.prepare(operation: operation);
+        if (_matches(source, operation, token, revision)) _readiness = value;
         return value;
       });
 
   Future<GeneratedDraftAttempt> generate() =>
-      _command('generate', (source, token, revision) async {
+      _command('generate', (source, operation, token, revision) async {
         final imageBytes = _imageBytes;
         final id = _idGenerator();
         final retained = <String>{
@@ -121,11 +130,11 @@ final class GeneratedDraftController implements Listenable {
         if (retained.contains(id) || _issuedIds.contains(id)) {
           throw StateError('Every generation requires a fresh non-source ID');
         }
-        if (!_matches(source, token, revision)) {
+        if (!_matches(source, operation, token, revision)) {
           throw StateError('Draft owner or context retired before launch');
         }
         final request = GeneratedDraftRequest(id: id,
-          operation: _operationFor(source), source: source,
+          operation: operation, source: source,
           imageBytes: imageBytes);
         _issuedIds.add(id);
         _activeRequestId = id;
@@ -135,7 +144,7 @@ final class GeneratedDraftController implements Listenable {
         } finally {
           _activeRequestId = null;
         }
-        final current = _matches(source, token, revision);
+        final current = _matches(source, operation, token, revision);
         if (current) _readiness = attempt.availability;
         if (!current && attempt.status == GeneratedDraftStatus.success) {
           attempt = GeneratedDraftAttempt.fromJson({
@@ -166,15 +175,27 @@ final class GeneratedDraftController implements Listenable {
     required Object? expectedContextRevision,
   }) {
     try {
-      if (!_live || busy || _publishing || !_admitted() ||
-          expectedGeneration != _generation ||
-          expectedContextRevision != currentContextRevision) {
+      final selectedsource = _source;
+      final selectedoperation = _operation;
+      if (!_live || busy || _publishing ||
+          expectedGeneration != _generation) {
         return false;
       }
       for (final attempt in _workspace.pending) {
         if (attempt.id == attemptId) {
-          return kind == GeneratedDraftDecisionKind.discard ||
-              (_sourceIsCurrent?.call(attempt.source) ?? true);
+          if (!_admitted() ||
+              !_selectionMatches(selectedsource, selectedoperation,
+                expectedGeneration) ||
+              (kind != GeneratedDraftDecisionKind.discard &&
+                !(_sourceIsCurrent?.call(attempt.source) ?? true))) {
+            return false;
+          }
+          final revision = currentContextRevision;
+          return expectedContextRevision == revision &&
+              !busy && !_publishing &&
+              _selectionMatches(selectedsource, selectedoperation,
+                expectedGeneration) &&
+              _workspace.pending.any((pending) => identical(pending, attempt));
         }
       }
       return false;
@@ -214,17 +235,23 @@ final class GeneratedDraftController implements Listenable {
   }
 
   Future<T> _command<T>(String action,
-      Future<T> Function(GeneratedDraftSource, int, Object?) run) {
+      Future<T> Function(GeneratedDraftSource, GeneratedDraftOperation,
+        int, Object?) run) {
     try {
       _requireLive();
       if (busy || _publishing) throw StateError('Draft controller is busy');
       final source = _source;
-      if (source == null || !_admitted() ||
+      final operation = _operation;
+      final token = _generation;
+      if (source == null || operation == null || !_admitted() ||
           !(_sourceIsCurrent?.call(source) ?? true)) {
         throw StateError('Choose a current source in an admitted owner');
       }
-      final token = _generation;
       final revision = currentContextRevision;
+      if (busy || _publishing ||
+          !_selectionMatches(source, operation, token)) {
+        throw StateError('Draft owner or selection retired during admission');
+      }
       final completion = Completer<T>();
       final settled = completion.future.then<void>((_) {},
         onError: (Object _, StackTrace _) {});
@@ -234,10 +261,10 @@ final class GeneratedDraftController implements Listenable {
       _notify();
       Future<void> launch() async {
         try {
-          if (!_matches(source, token, revision)) {
+          if (!_matches(source, operation, token, revision)) {
             throw StateError('Draft owner or context retired before launch');
           }
-          completion.complete(await run(source, token, revision));
+          completion.complete(await run(source, operation, token, revision));
         } catch (error, stack) {
           if (_live) _error = error;
           completion.completeError(error, stack);
@@ -257,11 +284,23 @@ final class GeneratedDraftController implements Listenable {
 
   bool _admitted() => _interactionAllowed?.call() ?? true;
 
-  bool _matches(GeneratedDraftSource source, int token, Object? revision) {
+  bool _selectionMatches(GeneratedDraftSource? source,
+      GeneratedDraftOperation? operation, int token) =>
+      _live && token == _generation && _sameSource(source, _source) &&
+      operation == _operation;
+
+  bool _matches(GeneratedDraftSource source,
+      GeneratedDraftOperation operation, int token, Object? revision) {
     try {
-      return _live && token == _generation && _sameSource(source, _source) &&
-          revision == currentContextRevision && _admitted() &&
-          (_sourceIsCurrent?.call(source) ?? true);
+      if (!_selectionMatches(source, operation, token) || !_admitted() ||
+          !_selectionMatches(source, operation, token) ||
+          !(_sourceIsCurrent?.call(source) ?? true) ||
+          !_selectionMatches(source, operation, token)) {
+        return false;
+      }
+      final currentrevision = currentContextRevision;
+      return revision == currentrevision &&
+          _selectionMatches(source, operation, token);
     } catch (_) {
       return false;
     }

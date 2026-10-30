@@ -8,6 +8,443 @@ import 'package:textus_flutter_core/textus_flutter_core.dart';
 
 void main() {
   group('explicit generated draft ownership', () {
+    for (final operation in [
+      GeneratedDraftOperation.textProofreading,
+      GeneratedDraftOperation.textReadability,
+    ]) {
+      test('explicit ${operation.name} forwards probe prepare and generation without implicit IO', () async {
+        // Given an exact text selected for one explicit revision operation.
+        final provider = _Provider()
+          ..state = GeneratedDraftAvailabilityState.downloadable;
+        final controller = _controller(provider)
+          ..selectSource(_text(), operation: operation);
+        addTearDown(controller.dispose);
+        expect(controller.operation, operation);
+        expect(provider.probes, 0);
+        expect(provider.preparations, 0);
+        expect(provider.requests, isEmpty);
+        // When the caller explicitly probes, prepares and generates.
+        final readiness = await controller.checkAvailability();
+        expect(readiness.operation, operation);
+        final prepared = await controller.prepare();
+        final attempt = await controller.generate();
+        // Then every provider probe and durable request uses the admitted operation.
+        expect(prepared.operation, operation);
+        expect(provider.probeOperations, isNotEmpty);
+        expect(provider.probeOperations, everyElement(operation));
+        expect(provider.preparations, 1);
+        expect(provider.requests.single.operation, operation);
+        expect(provider.requests.single.source.toJson(), _text().toJson());
+        expect(attempt.operation, operation);
+        expect(attempt.rawText, _raw);
+      });
+    }
+
+    test('same text with changed operation cancels old inference through cleanup without relabeling', () async {
+      // Given proofreading in flight with separate inference and cancellation cleanup gates.
+      final provider = _Provider();
+      final output = Completer<GeneratedDraftProviderOutput>();
+      final cleanup = Completer<bool>();
+      provider.onGenerate = (_) => output.future;
+      provider.onCancel = (_) => cleanup.future;
+      final source = _text();
+      final controller = _controller(provider)..selectSource(source,
+        operation: GeneratedDraftOperation.textProofreading);
+      addTearDown(controller.dispose);
+      await controller.checkAvailability();
+      final generation = controller.generation;
+      final running = controller.generate();
+      await _turn();
+      // When only the operation changes before the original raw response returns.
+      controller.selectSource(source, operation: GeneratedDraftOperation.textReadability);
+      expect(controller.generation, generation + 1);
+      expect(controller.operation, GeneratedDraftOperation.textReadability);
+      expect(controller.readiness, isNull);
+      expect(controller.error, isNull);
+      expect(provider.cancelIds, [provider.requests.single.id]);
+      output.complete(_success(cleanup: ['retained operation cleanup']));
+      await _turn();
+      expect(controller.busy, isTrue);
+      cleanup.complete(true);
+      final attempt = await running;
+      // Then only canceled old-intent evidence survives and cleanup owns busy until settlement.
+      expect(attempt.status, GeneratedDraftStatus.canceled);
+      expect(attempt.errorCode, anyOf('canceled', 'contextChanged'));
+      expect(attempt.operation, GeneratedDraftOperation.textProofreading);
+      expect(attempt.source.toJson(), source.toJson());
+      expect(attempt.rawText, _raw);
+      expect(attempt.cleanupFailures, ['retained operation cleanup']);
+      expect(controller.workspace.pending, isEmpty);
+      expect(controller.workspace.decisions, isEmpty);
+      expect(controller.readiness, isNull);
+      expect(controller.busy, isFalse);
+      provider.onGenerate = (_) async => _success();
+      final fresh = await controller.generate();
+      expect(fresh.operation, GeneratedDraftOperation.textReadability);
+      expect(provider.requests.map((request) => request.operation), [
+        GeneratedDraftOperation.textProofreading, GeneratedDraftOperation.textReadability,
+      ]);
+      expect(controller.workspace.attempts.first.operation,
+        GeneratedDraftOperation.textProofreading);
+    });
+
+    test('invalid explicit operation leaves selection readiness errors and provider untouched', () async {
+      // Given a selected and probed proofreading source plus a recorded command error.
+      final provider = _Provider();
+      final controller = _controller(provider, id: () => 'text-source')
+        ..selectSource(_text(), operation: GeneratedDraftOperation.textProofreading);
+      addTearDown(controller.dispose);
+      await controller.checkAvailability();
+      await expectLater(controller.generate(), throwsStateError);
+      final readiness = controller.readiness;
+      final error = controller.error;
+      final generation = controller.generation;
+      final probes = provider.probes;
+      var notifications = 0;
+      controller.addListener(() => notifications++);
+      // When null, image/text mismatches and illegal bytes are explicitly selected.
+      expect(() => controller.selectSource(null,
+        operation: GeneratedDraftOperation.textProofreading), throwsArgumentError);
+      for (final operation in [GeneratedDraftOperation.textProofreading,
+        GeneratedDraftOperation.textReadability, GeneratedDraftOperation.textSummary]) {
+        expect(() => controller.selectSource(_image(), operation: operation,
+          imageBytes: Uint8List.fromList([1])), throwsArgumentError);
+      }
+      expect(() => controller.selectSource(_text(),
+        operation: GeneratedDraftOperation.imageDescription), throwsArgumentError);
+      expect(() => controller.selectSource(_text(),
+        operation: GeneratedDraftOperation.textReadability,
+        imageBytes: Uint8List.fromList([1])), throwsArgumentError);
+      // Then public request validation has no state, notification or provider side effects.
+      expect(controller.source!.toJson(), _text().toJson());
+      expect(controller.operation, GeneratedDraftOperation.textProofreading);
+      expect(controller.generation, generation);
+      expect(controller.readiness, same(readiness));
+      expect(controller.error, same(error));
+      expect(controller.busy, isFalse);
+      expect(notifications, 0);
+      expect(provider.probes, probes);
+      expect(provider.preparations, 0);
+      expect(provider.requests, isEmpty);
+      expect(provider.cancelIds, isEmpty);
+      expect(controller.workspace.attempts, isEmpty);
+    });
+
+    test('same source and operation is a no-op even during owned inference', () async {
+      // Given an active readability request with an exact selected text and readiness.
+      final provider = _Provider();
+      final output = Completer<GeneratedDraftProviderOutput>();
+      provider.onGenerate = (_) => output.future;
+      final controller = _controller(provider)..selectSource(_text(),
+        operation: GeneratedDraftOperation.textReadability);
+      addTearDown(controller.dispose);
+      await controller.checkAvailability();
+      final readiness = controller.readiness;
+      final generation = controller.generation;
+      final running = controller.generate();
+      await _turn();
+      var notifications = 0;
+      controller.addListener(() => notifications++);
+      // When the caller reselects an equivalent source with the same explicit operation.
+      controller.selectSource(_text(), operation: GeneratedDraftOperation.textReadability);
+      // Then no generation, readiness, cancellation or notification changes occur.
+      expect(controller.generation, generation);
+      expect(controller.readiness, same(readiness));
+      expect(notifications, 0);
+      expect(provider.cancelIds, isEmpty);
+      output.complete(_success());
+      expect((await running).status, GeneratedDraftStatus.success);
+      expect(controller.workspace.pending.single.operation,
+        GeneratedDraftOperation.textReadability);
+    });
+
+    test('operation-only selection change clears old readiness and error and notifies once', () async {
+      // Given probed proofreading with an ID error recorded against that selection.
+      final provider = _Provider();
+      final controller = _controller(provider, id: () => 'text-source')
+        ..selectSource(_text(), operation: GeneratedDraftOperation.textProofreading);
+      addTearDown(controller.dispose);
+      await controller.checkAvailability();
+      await expectLater(controller.generate(), throwsStateError);
+      expect(controller.readiness, isNotNull);
+      expect(controller.error, isA<StateError>());
+      final generation = controller.generation;
+      final probes = provider.probes;
+      var notifications = 0;
+      controller.addListener(() => notifications++);
+      // When only the admitted operation changes to readability.
+      controller.selectSource(_text(), operation: GeneratedDraftOperation.textReadability);
+      // Then the selection advances once and clears old readiness/error without provider work.
+      expect(controller.generation, generation + 1);
+      expect(controller.readiness, isNull);
+      expect(controller.error, isNull);
+      expect(notifications, 1);
+      expect(provider.probes, probes);
+      expect(provider.requests, isEmpty);
+      expect(provider.cancelIds, isEmpty);
+      // When selection is explicitly cleared, its operation is cleared as well.
+      controller.selectSource(null);
+      // Then no operation remains attached to the absent source.
+      expect(controller.source, isNull);
+      expect(controller.operation, isNull);
+      expect(controller.generation, generation + 2);
+    });
+
+    for (final callback in ['admission', 'source', 'context']) {
+      for (final stage in ['initial', 'launch', 'publication']) {
+        for (final action in ['probe', 'prepare', 'generate']) {
+          test('$callback operation reselection at $stage rejects retired $action intent and recovers explicitly', () async {
+            // Given proofreading and one caller callback that will select readability.
+            final provider = _Provider();
+            final gate = Completer<void>();
+            final output = Completer<GeneratedDraftProviderOutput>();
+            if (action == 'prepare') {
+              provider.state = GeneratedDraftAvailabilityState.downloadable;
+            }
+            if (stage == 'publication') {
+              if (action == 'probe') provider.probeGate = gate.future;
+              if (action == 'prepare') provider.prepareGate = gate.future;
+              if (action == 'generate') provider.onGenerate = (_) => output.future;
+            }
+            var calls = 0;
+            var publishing = false;
+            var replaced = false;
+            late GeneratedDraftController controller;
+            void onCallback() {
+              calls++;
+              if (!replaced && (stage == 'publication' ? publishing
+                  : calls == (stage == 'initial' ? 1 : 2))) {
+                replaced = true;
+                controller.selectSource(_text(),
+                  operation: GeneratedDraftOperation.textReadability);
+              }
+            }
+            controller = _controller(provider,
+              admitted: () {
+                if (callback == 'admission') onCallback();
+                return true;
+              },
+              current: (_) {
+                if (callback == 'source') onCallback();
+                return true;
+              },
+              revision: () {
+                if (callback == 'context') onCallback();
+                return 1;
+              })..selectSource(_text(),
+                operation: GeneratedDraftOperation.textProofreading);
+            addTearDown(controller.dispose);
+            Future<Object> runCommand() => switch (action) {
+              'probe' => controller.checkAvailability(),
+              'prepare' => controller.prepare(),
+              _ => controller.generate(),
+            };
+            // When the callback retires that command at its selected boundary.
+            final running = runCommand();
+            if (stage == 'publication') {
+              await _turn();
+              publishing = true;
+              if (action == 'generate') {
+                output.complete(_success());
+              } else {
+                gate.complete();
+              }
+              final result = await running;
+              // Then completed work retains old provenance without publishing old readiness.
+              expect(provider.probeOperations,
+                everyElement(GeneratedDraftOperation.textProofreading));
+              if (result is GeneratedDraftAttempt) {
+                expect(result.status, GeneratedDraftStatus.canceled);
+                expect(result.errorCode, 'contextChanged');
+                expect(result.operation, GeneratedDraftOperation.textProofreading);
+                expect(result.rawText, _raw);
+                expect(controller.workspace.pending, isEmpty);
+              } else {
+                expect((result as GeneratedDraftAvailability).operation,
+                  GeneratedDraftOperation.textProofreading);
+                expect(provider.requests, isEmpty);
+              }
+            } else {
+              await expectLater(running, throwsStateError);
+              // Then a retired command never probes, prepares, infers or appends history.
+              expect(provider.probes, 0);
+              expect(provider.preparations, 0);
+              expect(provider.requests, isEmpty);
+              expect(controller.workspace.attempts, isEmpty);
+            }
+            expect(replaced, isTrue);
+            expect(controller.operation, GeneratedDraftOperation.textReadability);
+            expect(controller.readiness, isNull);
+            expect(controller.workspace.decisions, isEmpty);
+            expect(controller.busy, isFalse);
+            // When a new explicit command is issued for the replacement selection.
+            provider.onGenerate = (_) async => _success();
+            final fresh = await runCommand();
+            // Then only the new intent supplies current readiness and fresh provenance.
+            expect(controller.readiness!.operation,
+              GeneratedDraftOperation.textReadability);
+            expect(provider.probeOperations.last,
+              GeneratedDraftOperation.textReadability);
+            if (fresh is GeneratedDraftAttempt) {
+              expect(fresh.status, GeneratedDraftStatus.success);
+              expect(fresh.operation, GeneratedDraftOperation.textReadability);
+              expect(provider.requests.last.operation,
+                GeneratedDraftOperation.textReadability);
+              expect(controller.workspace.pending.single.id, fresh.id);
+            }
+            expect(controller.busy, isFalse);
+          });
+        }
+      }
+    }
+
+    for (final callback in ['admission', 'source']) {
+      for (final stage in ['launch', 'publication']) {
+        for (final action in ['probe', 'prepare', 'generate']) {
+          test('$callback context-only mutation at $stage fences $action and permits fresh recovery', () async {
+            // Given a fixed proofreading selection and callbacks sharing a human context revision.
+            final provider = _Provider();
+            final gate = Completer<void>();
+            final output = Completer<GeneratedDraftProviderOutput>();
+            if (action == 'prepare') {
+              provider.state = GeneratedDraftAvailabilityState.downloadable;
+            }
+            if (stage == 'publication') {
+              if (action == 'probe') provider.probeGate = gate.future;
+              if (action == 'prepare') provider.prepareGate = gate.future;
+              if (action == 'generate') provider.onGenerate = (_) => output.future;
+            }
+            var revision = 1;
+            var calls = 0;
+            var publishing = false;
+            var changed = false;
+            void onCallback() {
+              calls++;
+              if (!changed && (stage == 'publication' ? publishing : calls == 2)) {
+                changed = true;
+                revision++;
+              }
+            }
+            final controller = _controller(provider,
+              admitted: () {
+                if (callback == 'admission') onCallback();
+                return true;
+              },
+              current: (_) {
+                if (callback == 'source') onCallback();
+                return true;
+              }, revision: () => revision)..selectSource(_text(),
+                operation: GeneratedDraftOperation.textProofreading);
+            addTearDown(controller.dispose);
+            final generation = controller.generation;
+            Future<Object> runCommand() => switch (action) {
+              'probe' => controller.checkAvailability(),
+              'prepare' => controller.prepare(),
+              _ => controller.generate(),
+            };
+            // When admission changes only context after the command captured its intent.
+            final running = runCommand();
+            if (stage == 'publication') {
+              await _turn();
+              publishing = true;
+              if (action == 'generate') {
+                output.complete(_success());
+              } else {
+                gate.complete();
+              }
+              final result = await running;
+              // Then old work returns evidence without current readiness or adoptable raw.
+              if (result is GeneratedDraftAttempt) {
+                expect(result.status, GeneratedDraftStatus.canceled);
+                expect(result.errorCode, 'contextChanged');
+                expect(result.rawText, _raw);
+                expect(controller.workspace.pending, isEmpty);
+              } else {
+                expect((result as GeneratedDraftAvailability).operation,
+                  GeneratedDraftOperation.textProofreading);
+              }
+            } else {
+              await expectLater(running, throwsStateError);
+              // Then no provider command starts under the former human context.
+              expect(provider.probes, 0);
+              expect(provider.preparations, 0);
+              expect(provider.requests, isEmpty);
+              expect(controller.workspace.attempts, isEmpty);
+            }
+            expect(changed, isTrue);
+            expect(controller.generation, generation);
+            expect(controller.operation, GeneratedDraftOperation.textProofreading);
+            expect(controller.readiness, isNull);
+            expect(controller.workspace.decisions, isEmpty);
+            expect(controller.busy, isFalse);
+            // When the caller explicitly retries under the new human context.
+            provider.onGenerate = (_) async => _success();
+            final fresh = await runCommand();
+            // Then fresh readiness and successful raw remain available for the same operation.
+            expect(controller.readiness!.operation,
+              GeneratedDraftOperation.textProofreading);
+            if (fresh is GeneratedDraftAttempt) {
+              expect(fresh.status, GeneratedDraftStatus.success);
+              expect(controller.workspace.pending.single.id, fresh.id);
+            }
+            expect(controller.busy, isFalse);
+          });
+        }
+      }
+    }
+
+    test('operation replacement during ID allocation fences launch before provider work', () async {
+      // Given a proofreading command whose ID callback selects readability on the same source.
+      final provider = _Provider();
+      late GeneratedDraftController controller;
+      controller = _controller(provider, id: () {
+        controller.selectSource(_text(), operation: GeneratedDraftOperation.textReadability);
+        return 'retired-operation';
+      })..selectSource(_text(), operation: GeneratedDraftOperation.textProofreading);
+      addTearDown(controller.dispose);
+      // When the captured proofreading command attempts to launch after ID allocation.
+      await expectLater(controller.generate(), throwsStateError);
+      // Then the retired intent performs no provider work and records no mislabeled attempt.
+      expect(provider.probes, 0);
+      expect(provider.requests, isEmpty);
+      expect(provider.cancelIds, isEmpty);
+      expect(controller.workspace.attempts, isEmpty);
+      expect(controller.operation, GeneratedDraftOperation.textReadability);
+      expect(controller.busy, isFalse);
+    });
+
+    for (final action in ['probe', 'prepare']) {
+      test('operation change during $action keeps old readiness out of the new selection', () async {
+        // Given a proofreading readiness command blocked inside its borrowed provider.
+        final provider = _Provider();
+        final gate = Completer<void>();
+        if (action == 'probe') {
+          provider.probeGate = gate.future;
+        } else {
+          provider.state = GeneratedDraftAvailabilityState.downloadable;
+          provider.prepareGate = gate.future;
+        }
+        final controller = _controller(provider)..selectSource(_text(),
+          operation: GeneratedDraftOperation.textProofreading);
+        addTearDown(controller.dispose);
+        final running = action == 'probe' ? controller.checkAvailability() : controller.prepare();
+        await _turn();
+        // When the exact same text selects readability before old readiness settles.
+        controller.selectSource(_text(), operation: GeneratedDraftOperation.textReadability);
+        expect(controller.busy, isTrue);
+        gate.complete();
+        final readiness = await running;
+        // Then the result still names proofreading and never publishes readiness for readability.
+        expect(readiness.operation, GeneratedDraftOperation.textProofreading);
+        expect(provider.probeOperations, everyElement(GeneratedDraftOperation.textProofreading));
+        expect(controller.operation, GeneratedDraftOperation.textReadability);
+        expect(controller.readiness, isNull);
+        expect(provider.cancelIds, isEmpty);
+        expect(provider.requests, isEmpty);
+        expect(controller.busy, isFalse);
+      });
+    }
+
     for (final image in [false, true]) {
       for (final intent in ['accept', 'edit', 'clear', 'discard']) {
         test('${image ? "image" : "text"} $intent retains exact evidence', () async {
@@ -49,6 +486,8 @@ void main() {
           expect(provider.requests.single.id, isNot(source.id));
           expect(provider.requests.single.language, 'ja');
           expect(provider.requests.single.operation, image
+            ? GeneratedDraftOperation.imageDescription : GeneratedDraftOperation.textSummary);
+          expect(controller.operation, image
             ? GeneratedDraftOperation.imageDescription : GeneratedDraftOperation.textSummary);
           expect(provider.requests.single.imageBytes,
             image ? orderedEquals([10, 20, 30]) : isNull);
@@ -98,7 +537,8 @@ void main() {
       // When caller bytes change and an equivalent deep source is selected in another key order.
       bytes[0] = 8;
       controller.selectSource(_image(metadata: {'b': [2, {'y': null, 'x': true}], 'a': 1}),
-        imageBytes: Uint8List.fromList([1, 2]));
+        imageBytes: Uint8List.fromList([1, 2]),
+        operation: GeneratedDraftOperation.imageDescription);
       // Then the immutable snapshot is stable and invalid kind/byte combinations are rejected.
       expect(controller.imageBytes, orderedEquals([1, 2]));
       expect(() => controller.imageBytes![0] = 3, throwsUnsupportedError);
@@ -575,6 +1015,81 @@ void main() {
   });
 
   group('explicit terminal review', () {
+    for (final callback in ['admission', 'source', 'context']) {
+      for (final change in ['operation', 'context']) {
+        test('second decision $callback callback changing $change rejects stale acceptance and preserves old pending adoption', () async {
+          // Given an old pending proofreading proposal rendered under a still-current selection.
+          var revision = 1;
+          var armed = false;
+          var calls = 0;
+          var changed = false;
+          late GeneratedDraftController controller;
+          void onCallback() {
+            if (!armed) return;
+            calls++;
+            if (!changed && calls == 2) {
+              changed = true;
+              if (change == 'operation') {
+                controller.selectSource(_text(),
+                  operation: GeneratedDraftOperation.textReadability);
+              } else {
+                revision++;
+              }
+            }
+          }
+          controller = _controller(_Provider(),
+            admitted: () {
+              if (callback == 'admission') onCallback();
+              return true;
+            },
+            current: (_) {
+              if (callback == 'source') onCallback();
+              return true;
+            },
+            revision: () {
+              if (callback == 'context') onCallback();
+              return revision;
+            })..selectSource(_text(),
+              operation: GeneratedDraftOperation.textProofreading);
+          addTearDown(controller.dispose);
+          final attempt = await controller.generate();
+          final generation = controller.generation;
+          final context = controller.currentContextRevision;
+          armed = true;
+          // When the second admission check retires the rendered action just before publication.
+          expect(() => controller.decide(attempt.id, GeneratedDraftDecisionKind.accept,
+            expectedGeneration: generation, expectedContextRevision: context),
+            throwsStateError);
+          // Then stale acceptance publishes no decision and preserves the original pending raw.
+          expect(changed, isTrue);
+          expect(controller.workspace.decisions, isEmpty);
+          expect(controller.workspace.pending.single.id, attempt.id);
+          expect(controller.workspace.attempts.single.rawText, _raw);
+          expect(controller.workspace.attempts.single.operation,
+            GeneratedDraftOperation.textProofreading);
+          expect(controller.busy, isFalse);
+          // When a fresh render admits that old proposal with another source and operation selected.
+          armed = false;
+          controller.selectSource(_text(id: 'replacement-selection'),
+            operation: GeneratedDraftOperation.textReadability);
+          controller.decide(attempt.id, GeneratedDraftDecisionKind.accept,
+            expectedGeneration: controller.generation,
+            expectedContextRevision: controller.currentContextRevision);
+          // Then the individually current old proposal is adopted without rewriting its provenance.
+          expect(controller.workspace.decisions.single.attemptId, attempt.id);
+          expect(controller.workspace.decisions.single.kind,
+            GeneratedDraftDecisionKind.accept);
+          expect(controller.workspace.pending, isEmpty);
+          expect(controller.workspace.attempts.single.source.id, 'text-source');
+          expect(controller.workspace.attempts.single.operation,
+            GeneratedDraftOperation.textProofreading);
+          expect(controller.workspace.attempts.single.rawText, _raw);
+          expect(controller.source!.id, 'replacement-selection');
+          expect(controller.operation, GeneratedDraftOperation.textReadability);
+        });
+      }
+    }
+
     for (final change in ['generation', 'context', 'admission', 'source']) {
       test('stale $change rejects adoption, obsolete source still permits discard', () async {
         // Given an exact rendered token for a retained pending successful attempt.
@@ -609,9 +1124,11 @@ void main() {
 
     test('a pending source can be adopted individually after another source is selected', () async {
       // Given retained pending evidence whose source remains current independently of selection.
-      final controller = _controller(_Provider())..selectSource(_text());
+      final controller = _controller(_Provider())..selectSource(_text(),
+        operation: GeneratedDraftOperation.textProofreading);
       final first = await controller.generate();
-      controller.selectSource(_text(id: 'next-source'));
+      controller.selectSource(_text(id: 'next-source'),
+        operation: GeneratedDraftOperation.textReadability);
       // When the human accepts the first source using the current render token.
       controller.decide(first.id, GeneratedDraftDecisionKind.accept,
         expectedGeneration: controller.generation,
@@ -619,7 +1136,11 @@ void main() {
       // Then review acts on that retained attempt rather than substituting the selected source.
       expect(controller.workspace.decisions.single.attemptId, first.id);
       expect(controller.workspace.attempts.single.source.id, 'text-source');
+      expect(controller.workspace.attempts.single.operation,
+        GeneratedDraftOperation.textProofreading);
+      expect(controller.workspace.attempts.single.rawText, _raw);
       expect(controller.source!.id, 'next-source');
+      expect(controller.operation, GeneratedDraftOperation.textReadability);
       controller.dispose();
     });
 
@@ -719,6 +1240,7 @@ final class _Provider implements GeneratedDraftProvider {
   Future<GeneratedDraftProviderOutput> Function(GeneratedDraftRequest)? onGenerate;
   Future<bool> Function(String)? onCancel;
   final List<GeneratedDraftRequest> requests = [];
+  final List<GeneratedDraftOperation> probeOperations = [];
   final List<String> cancelIds = [];
 
   @override
@@ -726,6 +1248,7 @@ final class _Provider implements GeneratedDraftProvider {
     required GeneratedDraftOperation operation, required String language,
   }) async {
     probes++;
+    probeOperations.add(operation);
     await probeGate;
     return GeneratedDraftAvailability(providerId: id, operation: operation,
       language: language, state: state,

@@ -8,6 +8,251 @@ import 'package:textus_flutter_application_framework/textus_flutter_application_
 import 'package:textus_flutter_core/textus_flutter_core.dart';
 
 void main() {
+  for (final operation in [
+    GeneratedDraftOperation.textProofreading,
+    GeneratedDraftOperation.textReadability,
+  ]) {
+    final label = operation == GeneratedDraftOperation.textProofreading
+        ? '原文の校正' : '個人注釈の文章改善';
+    testWidgets('${operation.name} explicitly generates with its own label and exact replacement comparison', (
+      tester,
+    ) async {
+      // Given an exact Japanese/astral source with surrounding whitespace and a single replacement.
+      const original = ' \n原文😀の誤字。 \t';
+      const raw = ' \n原文😀の正字。 \t';
+      final source = _text(text: original);
+      final provider = _Provider()..terminal = GeneratedDraftProviderOutput(
+        status: GeneratedDraftStatus.success, text: raw, modelName: 'widget-model');
+      final controller = _controller(provider)..selectSource(source, operation: operation);
+      addTearDown(controller.dispose);
+      await _mount(tester, controller);
+      expect(find.text(label), findsOneWidget);
+      expect(find.text('$labelを生成'), findsOneWidget);
+      expect(provider.probes, 0);
+      expect(provider.requests, isEmpty);
+      // When explicit probe and generation run through the existing keyed buttons.
+      await _tap(tester, 'generated-draft-probe');
+      await _tap(tester, 'generated-draft-generate');
+      // Then original and raw remain exact and the comparison labels removed and inserted text.
+      expect(provider.probeOperations, everyElement(operation));
+      expect(provider.requests.single.operation, operation);
+      expect(controller.workspace.pending.single.operation, operation);
+      expect(find.text('$label（生成下書き）'), findsNWidgets(2));
+      expect(find.text(original), findsNWidgets(2));
+      expect(find.text(raw), findsOneWidget);
+      expect(find.text('削除・置換された原文'), findsOneWidget);
+      expect(find.text('挿入された提案文'), findsOneWidget);
+      expect(find.text('誤'), findsOneWidget);
+      expect(find.text('正'), findsOneWidget);
+      expect(find.text(' \n原文😀の'), findsOneWidget);
+      expect(find.text('字。 \t'), findsOneWidget);
+      expect(find.text('原文と提案・採用文の比較（採用は全文単位）'), findsOneWidget);
+      if (operation == GeneratedDraftOperation.textReadability) {
+        expect(find.text('個人注釈を書き直す提案です。原文の逐語的な引用ではありません。'),
+          findsNWidgets(2));
+      }
+      expect(controller.workspace.decisions, isEmpty);
+      expect(source.text, original);
+      expect(tester.takeException(), isNull);
+    });
+
+    for (final intent in ['accept', 'edit', 'clear', 'discard']) {
+      testWidgets('${operation.name} $intent retains raw and compares only the whole selected adopted text', (
+        tester,
+      ) async {
+        // Given a revision proposal whose original, raw and possible human edit are distinct.
+        const original = '原文😀の誤字。\n';
+        const raw = '原文😀の正字。\n';
+        const edited = '原文😀の別字。\n';
+        final source = _text(text: original);
+        final provider = _Provider()..terminal = GeneratedDraftProviderOutput(
+          status: GeneratedDraftStatus.success, text: raw, modelName: 'widget-model');
+        final controller = _controller(provider)..selectSource(source, operation: operation);
+        addTearDown(controller.dispose);
+        await controller.generate();
+        await _mount(tester, controller);
+        // When the user chooses an explicit whole-text accept, edit, empty edit or discard.
+        final action = intent == 'clear' ? 'edit' : intent;
+        await _tap(tester, 'generated-draft-$action-draft-0');
+        if (action == 'edit') {
+          await tester.enterText(find.byType(TextFormField), intent == 'clear' ? '' : edited);
+          await tester.tap(find.widgetWithText(FilledButton, '採用').last);
+          await tester.pumpAndSettle();
+        }
+        // Then original/raw history is unchanged and the selected adopted text has its own comparison.
+        expect(controller.workspace.attempts.single.source.text, original);
+        expect(controller.workspace.attempts.single.rawText, raw);
+        expect(controller.workspace.attempts.single.operation, operation);
+        expect(controller.workspace.pending, isEmpty);
+        final decision = controller.workspace.decisions.single;
+        if (intent == 'discard') {
+          expect(decision.kind, GeneratedDraftDecisionKind.discard);
+          expect(find.text('採用済みの生成下書き'), findsNothing);
+          expect(find.text('原文と提案・採用文の比較（採用は全文単位）'), findsNothing);
+        } else {
+          expect(decision.kind, intent == 'accept'
+              ? GeneratedDraftDecisionKind.accept : GeneratedDraftDecisionKind.edit);
+          expect(decision.editedText, intent == 'clear' ? '' : intent == 'edit' ? edited : null);
+          expect(find.text('$label（生成下書き）・出典：text-source'), findsOneWidget);
+          expect(find.text('採用した全文'), findsOneWidget);
+          expect(find.text('生成された未編集の下書き'), findsOneWidget);
+          expect(find.text(raw), intent == 'accept' ? findsNWidgets(2) : findsOneWidget);
+          expect(find.text('原文と提案・採用文の比較（採用は全文単位）'), findsOneWidget);
+          if (intent == 'clear') {
+            expect(find.text('消去済み'), findsOneWidget);
+            expect(find.text(original), findsNWidgets(3));
+          } else {
+            expect(find.text('誤'), findsOneWidget);
+            expect(find.text(intent == 'edit' ? '別' : '正'), findsOneWidget);
+          }
+        }
+        expect(controller.source!.text, original);
+        expect(source.text, original);
+        expect(tester.takeException(), isNull);
+      });
+    }
+
+    testWidgets('${operation.name} equal Japanese astral and whitespace text explicitly shows no changes', (
+      tester,
+    ) async {
+      // Given identical source and raw text containing Japanese, astral characters and exact whitespace.
+      const text = ' \t日本語😀𠮷\n末尾 \n';
+      final provider = _Provider()..terminal = GeneratedDraftProviderOutput(
+        status: GeneratedDraftStatus.success, text: text, modelName: 'widget-model');
+      final controller = _controller(provider)..selectSource(_text(text: text), operation: operation);
+      addTearDown(controller.dispose);
+      await controller.generate();
+      // When the proposal is reviewed and explicitly accepted as a whole.
+      await _mount(tester, controller);
+      expect(find.text('変更なし'), findsOneWidget);
+      expect(find.text(text), findsNWidgets(3));
+      await _tap(tester, 'generated-draft-accept-draft-0');
+      // Then unchanged is explicit for adopted text, without normalization or artificial replacement rows.
+      expect(find.text('変更なし'), findsOneWidget);
+      expect(find.text('削除・置換された原文'), findsNothing);
+      expect(find.text(text), findsNWidgets(4));
+      expect(controller.workspace.attempts.single.rawText, text);
+      expect(controller.workspace.attempts.single.source.text, text);
+      expect(controller.workspace.decisions.single.kind, GeneratedDraftDecisionKind.accept);
+    });
+
+    testWidgets('${operation.name} late human context change retains raw with actionable recovery and manual text', (
+      tester,
+    ) async {
+      // Given generation in flight while the caller owns a separate human context revision.
+      var revision = 1;
+      final output = Completer<GeneratedDraftProviderOutput>();
+      final provider = _Provider()..output = output.future;
+      final controller = _controller(provider, revision: () => revision)
+        ..selectSource(_text(), operation: operation);
+      addTearDown(controller.dispose);
+      await _mount(tester, controller);
+      await _tap(tester, 'generated-draft-probe');
+      await _tap(tester, 'generated-draft-generate', settle: false);
+      // When a concurrent human edit advances context before the original response arrives.
+      await tester.ensureVisible(find.byKey(const ValueKey('manual-sibling')));
+      await tester.enterText(find.byKey(const ValueKey('manual-sibling')), '人が並行して編集した文章');
+      revision++;
+      output.complete(_success());
+      await tester.pumpAndSettle();
+      // Then the stale raw is inspectable, recovery is actionable and no action can adopt it.
+      expect(find.text('canceled / contextChanged'), findsOneWidget);
+      expect(find.text(_raw), findsOneWidget);
+      expect(find.textContaining('現在の文章から再生成して確認するか、手動で内容を照合・調整'),
+        findsOneWidget);
+      expect(find.byKey(const ValueKey('generated-draft-accept-draft-0')), findsNothing);
+      expect(find.byKey(const ValueKey('generated-draft-edit-draft-0')), findsNothing);
+      final manual = tester.widget<EditableText>(find.descendant(
+        of: find.byKey(const ValueKey('manual-sibling')), matching: find.byType(EditableText)));
+      expect(manual.controller.text, '人が並行して編集した文章');
+      expect(controller.workspace.attempts.single.operation, operation);
+      expect(controller.workspace.pending, isEmpty);
+      expect(controller.workspace.decisions, isEmpty);
+      expect(controller.source!.text, _original);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  for (final insertion in [true, false]) {
+    testWidgets('revision comparison preserves exact ${insertion ? "inserted" : "removed"} whitespace and astral text', (
+      tester,
+    ) async {
+      // Given a proofreading proposal that only inserts or removes an exact newline/astral sequence.
+      const short = '甲乙';
+      const long = '甲 \n😀乙';
+      final provider = _Provider()..terminal = GeneratedDraftProviderOutput(
+        status: GeneratedDraftStatus.success, text: insertion ? long : short,
+        modelName: 'widget-model');
+      final controller = _controller(provider)..selectSource(
+        _text(text: insertion ? short : long), operation: GeneratedDraftOperation.textProofreading);
+      addTearDown(controller.dispose);
+      await controller.generate();
+      // When the whole proposal is inspected without adoption.
+      await _mount(tester, controller);
+      // Then a single exact replacement window exposes unchanged boundaries and the actual changed text.
+      expect(find.text('甲'), findsOneWidget);
+      expect(find.text('乙'), findsOneWidget);
+      expect(find.text(' \n😀'), findsOneWidget);
+      expect(find.text('削除・置換された原文'), findsOneWidget);
+      expect(find.text('挿入された提案文'), findsOneWidget);
+      expect(find.text('変更なし'), findsNothing);
+      expect(controller.workspace.decisions, isEmpty);
+    });
+  }
+
+  testWidgets('past proofreading proposal keeps its operation when readability is selected and remains individually adoptable', (
+    tester,
+  ) async {
+    // Given successful proofreading history whose source remains current after selecting another intent/source.
+    final controller = _controller(_Provider())..selectSource(_text(),
+      operation: GeneratedDraftOperation.textProofreading);
+    addTearDown(controller.dispose);
+    await controller.generate();
+    controller.selectSource(_text(id: 'another-source'), operation: GeneratedDraftOperation.textReadability);
+    // When the current render reviews and adopts the past proposal.
+    await _mount(tester, controller);
+    expect(find.text('個人注釈の文章改善'), findsOneWidget);
+    expect(find.text('原文の校正（生成下書き）'), findsOneWidget);
+    await _tap(tester, 'generated-draft-accept-draft-0');
+    // Then its label and durable operation remain proofreading, independent of current readability selection.
+    expect(find.text('原文の校正（生成下書き）・出典：text-source'), findsOneWidget);
+    expect(find.text('処理：textProofreading'), findsOneWidget);
+    expect(controller.workspace.attempts.single.operation, GeneratedDraftOperation.textProofreading);
+    expect(controller.workspace.decisions.single.attemptId, 'draft-0');
+    expect(controller.source!.id, 'another-source');
+    expect(controller.operation, GeneratedDraftOperation.textReadability);
+  });
+
+  testWidgets('operation retirement retains canceled raw and explains current-text recovery without adoption', (
+    tester,
+  ) async {
+    // Given proofreading inference held by a provider while the panel remains mounted.
+    final output = Completer<GeneratedDraftProviderOutput>();
+    final provider = _Provider()..output = output.future;
+    final controller = _controller(provider)..selectSource(_text(),
+      operation: GeneratedDraftOperation.textProofreading);
+    addTearDown(controller.dispose);
+    await _mount(tester, controller);
+    await _tap(tester, 'generated-draft-probe');
+    await _tap(tester, 'generated-draft-generate', settle: false);
+    // When a new text and readability intent retire that exact request before its raw output returns.
+    controller.selectSource(_text(id: 'new-text', text: '現在の人の文章'),
+      operation: GeneratedDraftOperation.textReadability);
+    output.complete(_success());
+    await tester.pumpAndSettle();
+    // Then canceled raw keeps its old operation and offers regeneration/manual reconciliation only.
+    expect(provider.cancelIds, ['draft-0']);
+    expect(controller.workspace.attempts.single.operation, GeneratedDraftOperation.textProofreading);
+    expect(controller.workspace.attempts.single.rawText, _raw);
+    expect(find.text(_raw), findsOneWidget);
+    expect(find.textContaining('現在の文章から再生成して確認するか、手動で内容を照合・調整'),
+      findsOneWidget);
+    expect(find.byKey(const ValueKey('generated-draft-accept-draft-0')), findsNothing);
+    expect(find.byKey(const ValueKey('generated-draft-edit-draft-0')), findsNothing);
+    expect(controller.workspace.decisions, isEmpty);
+    expect(controller.source!.text, '現在の人の文章');
+  });
+
   testWidgets('mount and selection do no IO and a missing source explains the next action', (
     tester,
   ) async {
@@ -280,7 +525,7 @@ void main() {
   }
 
   for (final action in ['accept', 'edit', 'discard']) {
-    for (final change in ['controller', 'selection', 'context', 'enabled', 'admission']) {
+    for (final change in ['controller', 'selection', 'operation', 'context', 'enabled', 'admission']) {
       testWidgets('retained $action closure is fenced after $change changes', (
         tester,
       ) async {
@@ -307,6 +552,10 @@ void main() {
         rebuild(() {
           if (change == 'controller') selected = replacement;
           if (change == 'selection') original.selectSource(_text(id: 'new-source'));
+          if (change == 'operation') {
+            original.selectSource(_text(),
+              operation: GeneratedDraftOperation.textProofreading);
+          }
           if (change == 'context') revision++;
           if (change == 'enabled') enabled = false;
           if (change == 'admission') allowed = false;
@@ -323,7 +572,7 @@ void main() {
     }
   }
 
-  for (final change in ['controller', 'selection', 'context', 'enabled', 'admission']) {
+  for (final change in ['controller', 'selection', 'operation', 'context', 'enabled', 'admission']) {
     testWidgets('opened edit dialog cannot adopt after $change changes', (
       tester,
     ) async {
@@ -350,6 +599,10 @@ void main() {
       rebuild(() {
         if (change == 'controller') selected = replacement;
         if (change == 'selection') original.selectSource(_text(id: 'new-source'));
+        if (change == 'operation') {
+          original.selectSource(_text(),
+            operation: GeneratedDraftOperation.textReadability);
+        }
         if (change == 'context') revision++;
         if (change == 'enabled') enabled = false;
         if (change == 'admission') allowed = false;
@@ -587,9 +840,9 @@ final _time = DateTime.utc(2026, 10, 30, 2);
 final _png = Uint8List.fromList(base64Decode(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='));
 
-GeneratedDraftSource _text({String id = 'text-source'}) => GeneratedDraftSource(
+GeneratedDraftSource _text({String id = 'text-source', String text = _original}) => GeneratedDraftSource(
   id: id, materialId: 'original', revision: 'r1',
-  kind: GeneratedDraftSourceKind.text, text: _original);
+  kind: GeneratedDraftSourceKind.text, text: text);
 GeneratedDraftSource _image() => GeneratedDraftSource(id: 'image-source',
   materialId: 'image-material', revision: 'r1', kind: GeneratedDraftSourceKind.image);
 
@@ -658,6 +911,7 @@ final class _Provider implements GeneratedDraftProvider {
   Future<bool>? cancellation;
   GeneratedDraftProviderOutput? terminal;
   final List<GeneratedDraftRequest> requests = [];
+  final List<GeneratedDraftOperation> probeOperations = [];
   final List<String> cancelIds = [];
 
   @override
@@ -665,6 +919,7 @@ final class _Provider implements GeneratedDraftProvider {
     required GeneratedDraftOperation operation, required String language,
   }) async {
     probes++;
+    probeOperations.add(operation);
     final error = probeError;
     if (error != null) throw error;
     return GeneratedDraftAvailability(providerId: id, operation: operation,

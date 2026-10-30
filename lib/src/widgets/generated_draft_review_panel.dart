@@ -187,10 +187,13 @@ class _GeneratedDraftReviewPanelState extends State<GeneratedDraftReviewPanel> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('画像の説明・文章の要約',
+        Text(_isRevision(controller.operation)
+            ? _operationLabel(controller.operation!) : '画像の説明・文章の要約',
           style: Theme.of(context).textTheme.titleMedium),
         if (source == null) const Text('先に出典を選んでください。') else ...[
-          Text(_sourceLabel(source)),
+          Text(_sourceLabel(controller.operation!)),
+          if (controller.operation == GeneratedDraftOperation.textReadability)
+            const Text(_readabilityNote),
           Text('出典：${source.id}'),
           if (source.kind == GeneratedDraftSourceKind.text) ...[
             const Text('原文'),
@@ -221,8 +224,7 @@ class _GeneratedDraftReviewPanelState extends State<GeneratedDraftReviewPanel> {
               onPressed: available &&
                   readiness?.state == GeneratedDraftAvailabilityState.available
                   ? () => _command(render, controller.generate) : null,
-              child: Text(source.kind == GeneratedDraftSourceKind.image
-                  ? '画像の説明を生成' : '文章の要約を生成')),
+              child: Text('${_operationLabel(controller.operation!)}を生成')),
           ]),
         ],
         if (controller.busy) ...[
@@ -246,6 +248,11 @@ class _GeneratedDraftReviewPanelState extends State<GeneratedDraftReviewPanel> {
           const Text('直近の失敗・キャンセル'),
           Text('${outcomes.last.status.name} / ${outcomes.last.errorCode}'),
           Text(outcomes.last.errorMessage!),
+          if (outcomes.last.errorCode == 'contextChanged')
+            const Text(_staleExplanation)
+          else if (outcomes.last.status == GeneratedDraftStatus.canceled)
+            const Text('キャンセルされた下書きは採用できません。現在の文章が変わっている場合は、'
+              '現在の文章から再生成して確認するか、手動で内容を照合・調整してください。'),
           if (outcomes.last.rawText?.trim().isNotEmpty ?? false)
             SelectableText(outcomes.last.rawText!),
           _provenance(outcomes.last.source, attempt: outcomes.last),
@@ -270,16 +277,20 @@ class _GeneratedDraftReviewPanelState extends State<GeneratedDraftReviewPanel> {
     return Card(child: Padding(padding: const EdgeInsets.all(12), child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(_sourceLabel(attempt.source)),
+        Text(_sourceLabel(attempt.operation)),
+        if (attempt.operation == GeneratedDraftOperation.textReadability)
+          const Text(_readabilityNote),
         Text('生成下書き・出典：${attempt.source.id}'),
         if (attempt.source.text != null) ...[
           const Text('原文'), SelectableText(attempt.source.text!),
         ],
         const Text('生成された未編集の下書き'),
         SelectableText(attempt.rawText!),
+        if (_isRevision(attempt.operation))
+          _comparison(attempt.source.text!, attempt.rawText!),
         _provenance(attempt.source, attempt: attempt),
         if (discard && !accept)
-          const Text('出典が更新または削除されています。採用せず、破棄できます。'),
+          const Text('出典が更新または削除されています。$_staleExplanation 採用せず、破棄できます。'),
         Wrap(spacing: 8, children: [
           FilledButton(key: ValueKey('generated-draft-accept-${attempt.id}'),
             onPressed: accept ? () => _decide(render, attempt,
@@ -301,9 +312,20 @@ class _GeneratedDraftReviewPanelState extends State<GeneratedDraftReviewPanel> {
     final text = decision.kind == GeneratedDraftDecisionKind.edit
         ? decision.editedText! : attempt.rawText!;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text('${_sourceLabel(attempt.source)}・出典：${attempt.source.id}'),
+      Text('${_sourceLabel(attempt.operation)}・出典：${attempt.source.id}'),
+      if (attempt.operation == GeneratedDraftOperation.textReadability)
+        const Text(_readabilityNote),
       Text('処理：${attempt.operation.name}'),
+      if (_isRevision(attempt.operation)) ...[
+        const Text('原文'),
+        SelectableText(attempt.source.text!),
+        const Text('生成された未編集の下書き'),
+        SelectableText(attempt.rawText!),
+        const Text('採用した全文'),
+      ],
       if (text.isEmpty) const Text('消去済み') else SelectableText(text),
+      if (_isRevision(attempt.operation))
+        _comparison(attempt.source.text!, text),
       _provenance(attempt.source, attempt: attempt),
     ]);
   }
@@ -332,10 +354,42 @@ class _GeneratedDraftReviewPanelState extends State<GeneratedDraftReviewPanel> {
     ]);
   }
 
-  String _sourceLabel(GeneratedDraftSource source) =>
-      source.kind == GeneratedDraftSourceKind.image
-          ? '画像の説明（生成下書き）' : '文章の要約（生成下書き）';
+  Widget _comparison(String original, String proposed) {
+    final comparison = TextRevisionComparison.between(
+      original: original, proposed: proposed);
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      const Text('原文と提案・採用文の比較（採用は全文単位）'),
+      if (!comparison.hasChanges) const Text('変更なし') else ...[
+        const Text('変更のない先頭部分'),
+        SelectableText(comparison.unchangedPrefix),
+        const Text('削除・置換された原文'),
+        SelectableText(comparison.removedText),
+        const Text('挿入された提案文'),
+        SelectableText(comparison.insertedText),
+        const Text('変更のない末尾部分'),
+        SelectableText(comparison.unchangedSuffix),
+      ],
+    ]);
+  }
+
+  bool _isRevision(GeneratedDraftOperation? operation) =>
+      operation == GeneratedDraftOperation.textProofreading ||
+      operation == GeneratedDraftOperation.textReadability;
+
+  String _sourceLabel(GeneratedDraftOperation operation) =>
+      '${_operationLabel(operation)}（生成下書き）';
+
+  String _operationLabel(GeneratedDraftOperation operation) => switch (operation) {
+    GeneratedDraftOperation.imageDescription => '画像の説明',
+    GeneratedDraftOperation.textSummary => '文章の要約',
+    GeneratedDraftOperation.textProofreading => '原文の校正',
+    GeneratedDraftOperation.textReadability => '個人注釈の文章改善',
+  };
 }
+
+const _readabilityNote = '個人注釈を書き直す提案です。原文の逐語的な引用ではありません。';
+const _staleExplanation = '現在の文章または確認時の状況が変わっています。'
+    '現在の文章から再生成して確認するか、手動で内容を照合・調整してください。';
 
 final class _RenderedDraft {
   const _RenderedDraft(this.controller, this.owner, this.epoch,
