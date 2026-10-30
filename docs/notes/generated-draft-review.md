@@ -69,6 +69,24 @@ cannot redirect those actions to another owner. Readiness and terminal evidence
 are visible while unrelated manual input remains available. Adopted derived text
 is displayed separately, including an explicit clear; discarded history is counted.
 
+Each edit-dialog opening also captures its exact Flutter route. Both Adopt and
+Cancel require that opening's context to remain mounted and its captured route to
+remain active and current before popping through that route's own navigator.
+A canceled dialog can remain mounted during its reverse transition; its retained
+buttons cannot close a newer edit dialog or an unrelated covering route, or submit
+its old text as the newer dialog's result. Existing controller/source/context
+checks still apply after the owned result, and an empty edited result still means
+an explicit derived clear.
+
+The `CPB-ESA67-FULL-001` regression scenarios use real Flutter routes and the real
+controller/service with an explicit host fake provider. They cancel edit A, drain
+its result without advancing reverse-animation time, open edit B while A remains
+mounted and replay A's retained Adopt or Cancel. Direct and unrelated-cover
+variants assert exact route authority, unchanged B text and pending workspace,
+then physically adopt B and assert only B's own edit is recorded while both raw
+attempts and sources survive. These are authored regression cases; execution and
+independent closure remain parent-owned.
+
 Publication stores local history before invoking the original owner's synchronous
 callback. A callback error is exposed on the controller and in the panel without
 claiming that data was saved. Local raw evidence remains available for caller

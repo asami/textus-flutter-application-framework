@@ -123,24 +123,34 @@ class _GeneratedDraftReviewPanelState extends State<GeneratedDraftReviewPanel> {
     try {
       final result = await showDialog<String>(
         context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('生成下書きを編集して採用'),
-          content: TextFormField(
-            initialValue: attempt.rawText,
-            onChanged: (value) => edited = value,
-            autofocus: true,
-            minLines: 1,
-            maxLines: 6,
-            decoration: const InputDecoration(
-              labelText: '採用する下書き（空欄で消去）'),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('キャンセル')),
-            FilledButton(onPressed: () => Navigator.pop(dialogContext, edited),
-              child: const Text('採用')),
-          ],
-        ),
+        builder: (dialogContext) {
+          final route = ModalRoute.of<String>(dialogContext);
+          void close(String? value) {
+            if (!dialogContext.mounted || route == null ||
+                !route.isActive || !route.isCurrent) {
+              return;
+            }
+            route.navigator?.pop<String>(value);
+          }
+          return AlertDialog(
+            title: const Text('生成下書きを編集して採用'),
+            content: TextFormField(
+              initialValue: attempt.rawText,
+              onChanged: (value) => edited = value,
+              autofocus: true,
+              minLines: 1,
+              maxLines: 6,
+              decoration: const InputDecoration(
+                labelText: '採用する下書き（空欄で消去）'),
+            ),
+            actions: [
+              TextButton(onPressed: () => close(null),
+                child: const Text('キャンセル')),
+              FilledButton(onPressed: () => close(edited),
+                child: const Text('採用')),
+            ],
+          );
+        },
       );
       if (result != null && _current(render) &&
           render.controller.canDecide(attempt.id, GeneratedDraftDecisionKind.edit,

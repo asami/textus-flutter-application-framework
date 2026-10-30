@@ -157,6 +157,128 @@ void main() {
     });
   }
 
+  for (final action in ['adopt', 'cancel']) {
+    for (final covered in [false, true]) {
+      testWidgets('canceled edit A $action cannot close ${covered ? "a covering route" : "edit B"} or supply B text', (
+        tester,
+      ) async {
+        // Given two distinct pending attempts from the real controller/service and a host fake provider.
+        const rawA = 'Aの未編集の生成結果';
+        const rawB = 'Bの未編集の生成結果';
+        const editedA = '取り消したAの編集';
+        const editedB = '明示して採用するBの編集';
+        final provider = _Provider()
+          ..terminal = GeneratedDraftProviderOutput(
+            status: GeneratedDraftStatus.success, text: rawA, modelName: 'widget-model');
+        final controller = _controller(provider)..selectSource(_text(id: 'source-a'));
+        addTearDown(controller.dispose);
+        final attemptA = await controller.generate();
+        provider.terminal = GeneratedDraftProviderOutput(
+          status: GeneratedDraftStatus.success, text: rawB, modelName: 'widget-model');
+        controller.selectSource(_text(id: 'source-b'));
+        final attemptB = await controller.generate();
+        final before = controller.workspace.toJson();
+        await _mount(tester, controller);
+        final openB = tester.widget<TextButton>(find.byKey(
+          ValueKey('generated-draft-edit-${attemptB.id}'))).onPressed!;
+        await _tap(tester, 'generated-draft-edit-${attemptA.id}');
+        await tester.enterText(find.byType(TextFormField), editedA);
+        final contextA = tester.element(find.byType(TextFormField));
+        final routeA = ModalRoute.of<String>(contextA)!;
+        final adoptA = tester.widget<FilledButton>(
+          find.widgetWithText(FilledButton, '採用').last).onPressed!;
+        final cancelA = tester.widget<TextButton>(
+          find.widgetWithText(TextButton, 'キャンセル')).onPressed!;
+        // When A is canceled and its result drains without advancing reverse-animation time.
+        await tester.tap(find.widgetWithText(TextButton, 'キャンセル'));
+        await tester.pump();
+        // Then A remains mounted but no longer owns an active dialog or any decision.
+        expect(contextA.mounted, isTrue);
+        expect(routeA.isActive, isFalse);
+        expect(controller.workspace.toJson(), before);
+        // When the retained current B action opens B while canceled A is still mounted.
+        openB();
+        await tester.pump();
+        final fieldB = find.byType(TextFormField).last;
+        await tester.enterText(fieldB, editedB);
+        final contextB = tester.element(fieldB);
+        final routeB = ModalRoute.of<String>(contextB)!;
+        final inputB = tester.widget<EditableText>(find.descendant(
+          of: fieldB, matching: find.byType(EditableText))).controller;
+        // Then the two openings have distinct identities and B holds only its own edit.
+        expect(contextA.mounted, isTrue);
+        expect(identical(routeA, routeB), isFalse);
+        expect(routeB.isActive, isTrue);
+        expect(routeB.isCurrent, isTrue);
+        expect(inputB.text, editedB);
+        final navigator = routeB.navigator!;
+        MaterialPageRoute<void>? coveringRoute;
+        if (covered) {
+          // When unrelated navigation covers B before A's retained button is replayed.
+          coveringRoute = MaterialPageRoute<void>(builder: (_) => const Scaffold(
+            body: Text('独立した画面', key: ValueKey('unrelated-cover'))));
+          unawaited(navigator.push<void>(coveringRoute));
+          await tester.pump();
+          // Then that exact covering route has current navigation authority.
+          expect(coveringRoute.isCurrent, isTrue);
+          expect(routeB.isCurrent, isFalse);
+          expect(find.byKey(const ValueKey('unrelated-cover')), findsOneWidget);
+        }
+        // When canceled A's retained Adopt or Cancel fires before A is disposed.
+        expect(contextA.mounted, isTrue);
+        (action == 'adopt' ? adoptA : cancelA)();
+        await tester.pump();
+        // Then no pending history or B edit changes and the exact top route remains current.
+        expect(contextA.mounted, isTrue);
+        expect(controller.workspace.toJson(), before);
+        expect(controller.workspace.decisions, isEmpty);
+        expect(controller.workspace.pending.map((attempt) => attempt.id),
+          [attemptA.id, attemptB.id]);
+        expect(routeB.isActive, isTrue);
+        expect(inputB.text, editedB);
+        if (covered) {
+          final cover = coveringRoute!;
+          expect(cover.isActive, isTrue);
+          expect(cover.isCurrent, isTrue);
+          expect(routeB.isCurrent, isFalse);
+          expect(find.byKey(const ValueKey('unrelated-cover')), findsOneWidget);
+          // When the host intentionally dismisses only its unrelated covering route.
+          navigator.pop<void>();
+          await tester.pump();
+          // Then B regains current authority with its unchanged local edit and pending workspace.
+          expect(cover.isActive, isFalse);
+          expect(routeB.isCurrent, isTrue);
+          expect(inputB.text, editedB);
+          expect(controller.workspace.toJson(), before);
+        } else {
+          expect(routeB.isCurrent, isTrue);
+        }
+        // When transitions finish and the user physically adopts B's own dialog edit.
+        await tester.pumpAndSettle();
+        await tester.tap(find.widgetWithText(FilledButton, '採用').last);
+        await tester.pumpAndSettle();
+        // Then only B receives its own edited decision; both exact raw/source histories survive.
+        expect(controller.workspace.decisions.length, 1);
+        final decision = controller.workspace.decisions.single;
+        expect(decision.attemptId, attemptB.id);
+        expect(decision.kind, GeneratedDraftDecisionKind.edit);
+        expect(decision.editedText, editedB);
+        expect(controller.workspace.pending.single.id, attemptA.id);
+        expect(controller.workspace.attempts.map((attempt) => attempt.toJson()),
+          [attemptA.toJson(), attemptB.toJson()]);
+        expect(controller.workspace.attempts.map((attempt) => attempt.rawText), [rawA, rawB]);
+        expect(controller.workspace.attempts.map((attempt) => attempt.source.id),
+          ['source-a', 'source-b']);
+        expect(controller.workspace.attempts.map((attempt) => attempt.source.text),
+          [_original, _original]);
+        expect(controller.source!.id, 'source-b');
+        expect(provider.requests.map((request) => request.id), [attemptA.id, attemptB.id]);
+        expect(find.byType(AlertDialog), findsNothing);
+        expect(tester.takeException(), isNull);
+      });
+    }
+  }
+
   for (final action in ['accept', 'edit', 'discard']) {
     for (final change in ['controller', 'selection', 'context', 'enabled', 'admission']) {
       testWidgets('retained $action closure is fenced after $change changes', (
