@@ -12,6 +12,15 @@ final class CaptureStorageFacade {
 
   final LocalCaptureStore _store;
 
+  /// Creates an inert retrieval service borrowing this facade's exact store.
+  /// The caller closes the returned service; storage ownership stays unchanged.
+  LocalMaterialRetrievalService createMaterialRetrievalService({
+    required MaterialRetrievalCorpus corpus,
+    required String corpusId,
+  }) => LocalMaterialRetrievalService(
+    store: _store, corpus: corpus, corpusId: corpusId,
+  );
+
   /// Imports unchanged original bytes and returns Core's durable reference.
   Future<CaptureMaterialReference> importMaterial({
     required Uint8List bytes,
