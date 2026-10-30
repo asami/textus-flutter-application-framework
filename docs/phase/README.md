@@ -1,5 +1,33 @@
 # Development phases
 
+## Planned common media actions — 2026-10-31
+
+[Media action integration](media-input-actions-plan.md) supplies one import-first
+Web/tablet/Fold screen composition for App Phase 7 ESA7-08. Core supplies
+support/device/permission states; Framework renders enabled or disabled actions
+with accessible reasons and an explicit check for unknown/requestable states.
+No Book-specific permission logic or blanket Web camera prohibition is added.
+
+## Planned Fold/mode consumer integration — 2026-10-31
+
+App [Phase 7 ESA7-07](../../../../Project2026/nict-editing-studio-app/docs/phase/phase-7.md)
+reuses the accepted adaptive/pane/hinge foundation for native Pixel 11 Pro Fold
+and Web. Small viewports offer input/reference; large viewports offer input/
+reference and editing. Unfold preserves input mode; a visible user action
+switches to editing. Shared mode/layout handling retains selection/draft across
+posture changes and does not trigger save/admission. Framework owns reusable
+behavior, App owns domain composition and actual-device acceptance. Add only
+identified gaps; do not reopen Phase 2.1 or treat old layout proof as acceptance
+of the new two-mode behavior. General tablet qualification remains later.
+
+## Planned User Account login integration — 2026-10-31
+
+[Common login facade](user-account-authentication-integration-plan.md) consumes
+Core's textus-user-account authentication client for shared login/account/logout
+UI and navigation. Native App 6.10 precedes Web App 7; Studio Server 5 connects
+user-account with CNCF. This bounded workstream preserves planned Phase 4
+Sensitive Interaction and closed phases; no execution or acceptance is claimed.
+
 ## Accepted TKL delivery follow-on — 2026-10-27
 
 [TKL-managed Material delivery](tkl-managed-material-delivery-plan.md) extends

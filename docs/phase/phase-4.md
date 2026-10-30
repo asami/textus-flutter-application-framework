@@ -14,6 +14,11 @@ Flutter path.
 
 ## Planned work
 
+The [User Account login workstream](user-account-authentication-integration-plan.md)
+delivers common login presentation for App 6.10/7. Reuse its accepted pieces;
+it is not completion of this broader Phase or a waiver of selected capability
+dependencies. Do not duplicate the login facade in Book-specific App code.
+
 - define application-facing SensitiveInteraction API;
 - initial interaction families: payment, identity/authentication, signing and
   provider consent as justified by concrete use cases;
