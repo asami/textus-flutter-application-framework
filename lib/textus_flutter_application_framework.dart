@@ -1,6 +1,10 @@
 /// Reusable, configuration-driven application UI for Textus Flutter apps.
 library;
 
+export 'src/authentication/user_account_authentication_facade.dart';
+export 'src/authentication/user_account_authentication_panel.dart';
+export 'src/authentication/user_account_authentication_page.dart';
+
 export 'src/retrieval/material_retrieval_controller.dart';
 export 'src/widgets/material_retrieval_panel.dart';
 
