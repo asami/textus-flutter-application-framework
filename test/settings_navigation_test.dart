@@ -345,7 +345,7 @@ void main() {
           );
           await _choose(tester, 2);
           final snapshot = session.view.snapshot;
-          expect(find.text('Unsaved changes'), findsOneWidget);
+          expect(find.text('未保存の変更があります'), findsOneWidget);
           navigator.currentState!.pop();
           await tester.pumpAndSettle();
           await launch.completion;
@@ -361,14 +361,11 @@ void main() {
           expect(session.view.service, same(session.controller));
           expect(session.storage.readCount, 1);
           expect(session.storage.writeCount, 1);
-          expect(find.text('Prefer dual pane'), findsOneWidget);
-          expect(
-            find.textContaining('Unavailable in this environment'),
-            findsOneWidget,
-          );
+          expect(find.text('2画面を優先'), findsOneWidget);
+          expect(find.textContaining('この環境では利用できません'), findsOneWidget);
           session.storage.writes[0].succeed();
           await _flush(tester);
-          expect(find.text('Changes saved'), findsOneWidget);
+          expect(find.text('設定を保存しました'), findsOneWidget);
           navigator.currentState!.pop();
           await tester.pumpAndSettle();
           expect(session.view.attached, 2);

@@ -11,32 +11,32 @@ enum SettingsHingePreference { automatic, avoid, span }
 abstract final class CommonSettings {
   /// Standard group identities and presentation order.
   static final List<SettingGroup> groups = List.unmodifiable([
-    SettingGroup(id: 'appearance', label: 'Appearance'),
-    SettingGroup(id: 'layout', label: 'Layout'),
-    SettingGroup(id: 'accessibility', label: 'Accessibility'),
-    SettingGroup(id: 'application', label: 'Application'),
+    SettingGroup(id: 'appearance', label: '外観'),
+    SettingGroup(id: 'layout', label: '画面構成'),
+    SettingGroup(id: 'accessibility', label: 'アクセシビリティ'),
+    SettingGroup(id: 'application', label: 'アプリ'),
   ]);
 
   /// Pane preference; automatic preserves adaptive configuration behavior.
   static final panePreference = SettingDefinition<SettingsPanePreference>(
     id: 'textus.layout.panePreference',
     groupId: 'layout',
-    label: 'Pane preference',
+    label: '画面の分割',
     defaultValue: SettingsPanePreference.automatic,
     choices: [
       SettingChoice(
         value: SettingsPanePreference.automatic,
-        label: 'Automatic',
+        label: '自動',
         storedValue: 'automatic',
       ),
       SettingChoice(
         value: SettingsPanePreference.preferSinglePane,
-        label: 'Prefer single pane',
+        label: '1画面を優先',
         storedValue: 'preferSinglePane',
       ),
       SettingChoice(
         value: SettingsPanePreference.preferDualPane,
-        label: 'Prefer dual pane',
+        label: '2画面を優先',
         storedValue: 'preferDualPane',
       ),
     ],
@@ -46,24 +46,24 @@ abstract final class CommonSettings {
   static final hingePreference = SettingDefinition<SettingsHingePreference>(
     id: 'textus.layout.hingePreference',
     groupId: 'layout',
-    label: 'Hinge preference',
+    label: '折り目の扱い',
     defaultValue: SettingsHingePreference.automatic,
     requiredCapability: 'hinge',
     availabilityPolicy: SettingAvailabilityPolicy.disableWhenUnsupported,
     choices: [
       SettingChoice(
         value: SettingsHingePreference.automatic,
-        label: 'Automatic',
+        label: '自動',
         storedValue: 'automatic',
       ),
       SettingChoice(
         value: SettingsHingePreference.avoid,
-        label: 'Avoid hinge',
+        label: '折り目を避ける',
         storedValue: 'avoid',
       ),
       SettingChoice(
         value: SettingsHingePreference.span,
-        label: 'Span hinge',
+        label: '折り目をまたいで表示',
         storedValue: 'span',
       ),
     ],
@@ -73,12 +73,12 @@ abstract final class CommonSettings {
   static final textSizeMultiplier = SettingDefinition<double>(
     id: 'textus.appearance.textSizeMultiplier',
     groupId: 'appearance',
-    label: 'Text size',
+    label: '文字サイズ',
     defaultValue: 1.0,
     choices: [
-      SettingChoice(value: 1.0, label: 'Standard', storedValue: 1.0),
-      SettingChoice(value: 1.15, label: 'Larger', storedValue: 1.15),
-      SettingChoice(value: 1.30, label: 'Largest', storedValue: 1.30),
+      SettingChoice(value: 1.0, label: '標準', storedValue: 1.0),
+      SettingChoice(value: 1.15, label: '大きめ', storedValue: 1.15),
+      SettingChoice(value: 1.30, label: 'さらに大きく', storedValue: 1.30),
     ],
   );
 

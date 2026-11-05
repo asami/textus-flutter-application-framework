@@ -107,7 +107,7 @@ class ApplicationTextCupertinoBar extends StatelessWidget
            44.0,
            _titleHeight(
                  context,
-                 'Settings',
+                 '設定',
                  CupertinoTheme.of(context).textTheme.navTitleTextStyle,
                  ApplicationTextScaling.maybeTextScalerOf(context)!,
                  width - (Navigator.of(context).canPop() ? 56 : 0) - 32,
@@ -146,7 +146,7 @@ class ApplicationTextCupertinoBar extends StatelessWidget
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: _titleViewport(
-                  title: 'Settings',
+                  title: '設定',
                   style: style,
                   scaler: scaler,
                   height: height,

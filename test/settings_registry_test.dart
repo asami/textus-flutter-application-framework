@@ -41,10 +41,10 @@ void main() {
         'application',
       ]);
       expect(registry.groups.map((group) => group.label), [
-        'Appearance',
-        'Layout',
-        'Accessibility',
-        'Application',
+        '外観',
+        '画面構成',
+        'アクセシビリティ',
+        'アプリ',
       ]);
       expect(registry.definitions.map((definition) => definition.id), [
         'textus.layout.panePreference',

@@ -261,14 +261,11 @@ void main() {
 
         // When the shell mounts and rebuilds with a different platform/input.
         await _mount(tester, session.view, style);
-        _label(CommonSettings.panePreference, 'Automatic');
-        _label(CommonSettings.textSizeMultiplier, 'Standard');
-        expect(find.text('Settings not loaded'), findsOneWidget);
-        expect(find.text('Changes saved'), findsNothing);
-        expect(
-          find.textContaining('Unavailable in this environment'),
-          findsOneWidget,
-        );
+        _label(CommonSettings.panePreference, '自動');
+        _label(CommonSettings.textSizeMultiplier, '標準');
+        expect(find.text('設定をまだ読み込んでいません'), findsOneWidget);
+        expect(find.text('設定を保存しました'), findsNothing);
+        expect(find.textContaining('この環境では利用できません'), findsOneWidget);
         await _mount(
           tester,
           session.view,
@@ -375,9 +372,9 @@ void main() {
               );
               expect(session.view.snapshot.unsavedIds, contains(definition.id));
               _label(definition, choice.label);
-              expect(find.text('Saving settings'), findsOneWidget);
-              expect(find.text('Unsaved changes'), findsOneWidget);
-              expect(find.text('Changes saved'), findsNothing);
+              expect(find.text('設定を保存しています'), findsOneWidget);
+              expect(find.text('未保存の変更があります'), findsOneWidget);
+              expect(find.text('設定を保存しました'), findsNothing);
               expect(
                 SettingsRecord.decode(session.storage.writes[write].record)
                     .values[definition.id],
@@ -390,7 +387,7 @@ void main() {
               // Then saved status follows the snapshot and not selector completion.
               expect(session.view.snapshot.savedRevision, revision);
               expect(session.view.snapshot.unsavedIds, isEmpty);
-              expect(find.text('Changes saved'), findsOneWidget);
+              expect(find.text('設定を保存しました'), findsOneWidget);
             }
           }
           expect(session.storage.readCount, 1);
@@ -490,10 +487,7 @@ void main() {
         expect(session.view.snapshot.revision, 0);
         expect(_row(hiddenBool), findsNothing);
         expect(_row(hiddenChoice), findsNothing);
-        expect(
-          find.textContaining('Unavailable in this environment'),
-          findsNWidgets(3),
-        );
+        expect(find.textContaining('この環境では利用できません'), findsNWidgets(3));
         if (style == SettingsPresentation.material) {
           expect(
             tester.widget<SwitchListTile>(_row(disabledBool)).onChanged,
@@ -636,7 +630,7 @@ void main() {
             session,
             record: _wire({CommonSettings.textSizeMultiplier.id: 1.15}),
           );
-          _label(CommonSettings.textSizeMultiplier, 'Larger');
+          _label(CommonSettings.textSizeMultiplier, '大きめ');
           session.view.setValue(
             CommonSettings.panePreference.id,
             SettingsPanePreference.preferDualPane,
@@ -644,11 +638,11 @@ void main() {
           await _flush(tester);
 
           // Then controls display the authority's new values without a copied cache.
-          _label(CommonSettings.panePreference, 'Prefer dual pane');
-          expect(find.text('Unsaved changes'), findsOneWidget);
+          _label(CommonSettings.panePreference, '2画面を優先');
+          expect(find.text('未保存の変更があります'), findsOneWidget);
           expect(session.view.snapshot.revision, 1);
           await _ack(tester, session, 0);
-          expect(find.text('Changes saved'), findsOneWidget);
+          expect(find.text('設定を保存しました'), findsOneWidget);
         },
       );
 
@@ -659,25 +653,25 @@ void main() {
           final session = _session(tester);
           await _mount(tester, session.view, style);
           await _tap(tester, _key('settings-load'));
-          expect(find.text('Loading settings'), findsOneWidget);
+          expect(find.text('設定を読み込んでいます'), findsOneWidget);
 
           // When the user selects a preference before a conflicting late read.
           await _select(tester, CommonSettings.panePreference, 2);
           expect(session.storage.writeCount, 0);
-          expect(find.text('Changes saved'), findsNothing);
+          expect(find.text('設定を保存しました'), findsNothing);
           session.storage.reads[0].succeed(
             _wire({CommonSettings.panePreference.id: 'preferSinglePane'}),
           );
           await _flush(tester);
 
           // Then current intent wins and writes only after the read barrier opens.
-          _label(CommonSettings.panePreference, 'Prefer dual pane');
+          _label(CommonSettings.panePreference, '2画面を優先');
           expect(session.view.snapshot.revision, 1);
           expect(session.view.loadCalls, 1);
           expect(session.storage.writeCount, 1);
-          expect(find.text('Saving settings'), findsOneWidget);
+          expect(find.text('設定を保存しています'), findsOneWidget);
           await _ack(tester, session, 0);
-          expect(find.text('Changes saved'), findsOneWidget);
+          expect(find.text('設定を保存しました'), findsOneWidget);
         },
       );
 
@@ -690,7 +684,7 @@ void main() {
           await _tap(tester, _key('settings-load'));
           session.storage.reads[0].fail(StateError('private adapter detail'));
           await _flush(tester);
-          expect(find.text('Settings could not be loaded'), findsOneWidget);
+          expect(find.text('設定を読み込めませんでした'), findsOneWidget);
 
           // When UI edits/reset and an external save retry precede a read retry.
           await _select(tester, CommonSettings.panePreference, 1);
@@ -709,10 +703,10 @@ void main() {
           expect(session.storage.readCount, 2);
           expect(session.storage.writeCount, 1);
           expect(session.view.snapshot.revision, 3);
-          _label(CommonSettings.panePreference, 'Prefer dual pane');
+          _label(CommonSettings.panePreference, '2画面を優先');
           expect(find.textContaining('private adapter detail'), findsNothing);
           await _ack(tester, session, 0);
-          expect(find.text('Changes saved'), findsOneWidget);
+          expect(find.text('設定を保存しました'), findsOneWidget);
         },
       );
 
@@ -731,7 +725,7 @@ void main() {
             session,
             record: _wire({flag.id: 'yes-wire'}, version: 9),
           );
-          expect(find.text('Unsupported settings format'), findsOneWidget);
+          expect(find.text('この設定形式には対応していません'), findsOneWidget);
           expect(_key('settings-retry-load'), findsOneWidget);
           expect(_key('settings-reset'), findsOneWidget);
 
@@ -749,17 +743,17 @@ void main() {
           expect(submitted.version, 1);
           expect(submitted.values[flag.id], 'yes-wire');
           _retained(submitted);
-          expect(find.text('Unsupported settings format'), findsOneWidget);
-          expect(find.text('Unsaved changes'), findsOneWidget);
-          expect(find.text('Changes saved'), findsNothing);
+          expect(find.text('この設定形式には対応していません'), findsOneWidget);
+          expect(find.text('未保存の変更があります'), findsOneWidget);
+          expect(find.text('設定を保存しました'), findsNothing);
 
           // When the exact recovery write acknowledges.
           await _ack(tester, session, 0);
 
           // Then the controller transitions to ready and the shell reports saved.
           expect(session.view.snapshot.readState, SettingsReadState.ready);
-          expect(find.text('Unsupported settings format'), findsNothing);
-          expect(find.text('Changes saved'), findsOneWidget);
+          expect(find.text('この設定形式には対応していません'), findsNothing);
+          expect(find.text('設定を保存しました'), findsOneWidget);
         },
       );
 
@@ -771,15 +765,15 @@ void main() {
           await _mount(tester, session.view, style);
           await _load(tester, session);
           await _select(tester, CommonSettings.textSizeMultiplier, 1);
-          expect(find.text('Saving settings'), findsOneWidget);
+          expect(find.text('設定を保存しています'), findsOneWidget);
 
           // When that write fails and a newer UI edit precedes Retry saving.
           session.storage.writes[0].fail(StateError('secret write failure'));
           await _flush(tester);
           await _select(tester, CommonSettings.textSizeMultiplier, 2);
           expect(session.storage.writeCount, 1);
-          expect(find.text('Settings could not be saved'), findsOneWidget);
-          expect(find.text('Unsaved changes'), findsOneWidget);
+          expect(find.text('設定を保存できませんでした'), findsOneWidget);
+          expect(find.text('未保存の変更があります'), findsOneWidget);
           expect(find.textContaining('secret write failure'), findsNothing);
           await _tap(tester, _key('settings-retry-save'));
 
@@ -791,11 +785,11 @@ void main() {
                 .values[CommonSettings.textSizeMultiplier.id],
             1.30,
           );
-          _label(CommonSettings.textSizeMultiplier, 'Largest');
-          expect(find.text('Changes saved'), findsNothing);
+          _label(CommonSettings.textSizeMultiplier, 'さらに大きく');
+          expect(find.text('設定を保存しました'), findsNothing);
           await _ack(tester, session, 1);
-          expect(find.text('Settings could not be saved'), findsNothing);
-          expect(find.text('Changes saved'), findsOneWidget);
+          expect(find.text('設定を保存できませんでした'), findsNothing);
+          expect(find.text('設定を保存しました'), findsOneWidget);
         },
       );
 
@@ -861,8 +855,8 @@ void main() {
 
           // When reset is confirmed before a nondefault common/extension read.
           await _reset(tester);
-          expect(find.text('Loading settings'), findsOneWidget);
-          expect(find.text('Unsaved changes'), findsOneWidget);
+          expect(find.text('設定を読み込んでいます'), findsOneWidget);
+          expect(find.text('未保存の変更があります'), findsOneWidget);
           expect(session.storage.writeCount, 0);
           session.storage.reads[0].succeed(
             _wire({
@@ -875,16 +869,16 @@ void main() {
           // Then common defaults win, untouched extension restores, ack stays pending.
           expect(session.view.snapshot.revision, 1);
           expect(session.view.value(flag), isTrue);
-          _label(CommonSettings.panePreference, 'Automatic');
-          expect(find.text('Saving settings'), findsOneWidget);
-          expect(find.text('Changes saved'), findsNothing);
+          _label(CommonSettings.panePreference, '自動');
+          expect(find.text('設定を保存しています'), findsOneWidget);
+          expect(find.text('設定を保存しました'), findsNothing);
           final submitted = SettingsRecord.decode(
             session.storage.writes[0].record,
           );
           expect(submitted.values[flag.id], 'yes-wire');
           _retained(submitted);
           await _ack(tester, session, 0);
-          expect(find.text('Changes saved'), findsOneWidget);
+          expect(find.text('設定を保存しました'), findsOneWidget);
         },
       );
 
@@ -907,7 +901,7 @@ void main() {
           await tester.pumpAndSettle();
           if (style == SettingsPresentation.cupertino) {
             await _openChoice(tester, CommonSettings.panePreference);
-            await tester.tap(find.text('Cancel'));
+            await tester.tap(find.text('キャンセル'));
             await tester.pumpAndSettle();
           }
 
@@ -1106,13 +1100,10 @@ void main() {
         await tester.ensureVisible(_key('settings-retry-load'));
         expect(_key('settings-retry-load').hitTestable(), findsOneWidget);
         await _reset(tester);
-        await tester.ensureVisible(find.text('Unsaved changes'));
+        await tester.ensureVisible(find.text('未保存の変更があります'));
 
         // Then disabled descriptions/status/reset are readable and scrollable too.
-        expect(
-          find.textContaining('Unavailable in this environment'),
-          findsNWidgets(2),
-        );
+        expect(find.textContaining('この環境では利用できません'), findsNWidgets(2));
         expect(session.view.snapshot.revision, 2);
         expect(tester.takeException(), isNull);
       });
@@ -1126,7 +1117,7 @@ void main() {
           await _tap(tester, _key('settings-load'));
           expect(session.view.loadCalls, 1);
           expect(session.storage.readCount, 1);
-          expect(find.text('Loading settings'), findsOneWidget);
+          expect(find.text('設定を読み込んでいます'), findsOneWidget);
           session.storage.reads[0].succeed(_wire({}, version: 8));
           await _flush(tester);
 
@@ -1143,12 +1134,12 @@ void main() {
           // Then real simultaneous read/save errors expose independent retry actions.
           expect(session.view.snapshot.readError, isNotNull);
           expect(session.view.snapshot.saveError, isNotNull);
-          expect(find.text('Unsupported settings format'), findsOneWidget);
-          expect(find.text('Settings could not be saved'), findsOneWidget);
+          expect(find.text('この設定形式には対応していません'), findsOneWidget);
+          expect(find.text('設定を保存できませんでした'), findsOneWidget);
           expect(_key('settings-retry-load'), findsOneWidget);
           expect(_key('settings-retry-save'), findsOneWidget);
-          expect(find.text('Unsaved changes'), findsOneWidget);
-          expect(find.text('Changes saved'), findsNothing);
+          expect(find.text('未保存の変更があります'), findsOneWidget);
+          expect(find.text('設定を保存しました'), findsNothing);
 
           // When retry-load and retry-save are each tapped once during recovery.
           await _tap(tester, _key('settings-retry-load'));
@@ -1162,10 +1153,10 @@ void main() {
           // Then each tap delegates once; only save retry performs the eligible I/O.
           expect(session.view.retrySaveCalls, 1);
           expect(session.storage.writeCount, 2);
-          expect(find.text('Saving settings'), findsOneWidget);
-          expect(find.text('Unsupported settings format'), findsOneWidget);
+          expect(find.text('設定を保存しています'), findsOneWidget);
+          expect(find.text('この設定形式には対応していません'), findsOneWidget);
           await _ack(tester, session, 1);
-          expect(find.text('Changes saved'), findsOneWidget);
+          expect(find.text('設定を保存しました'), findsOneWidget);
           expect(session.view.snapshot.readError, isNull);
           expect(session.view.snapshot.saveError, isNull);
         },

@@ -400,7 +400,7 @@ void main() {
     expect(
       find.descendant(
         of: row,
-        matching: find.text('Span hinge\nUnavailable in this environment'),
+        matching: find.text('折り目をまたいで表示\nこの環境では利用できません'),
       ),
       findsOneWidget,
     );

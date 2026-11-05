@@ -121,7 +121,7 @@ class _SettingsShellState extends State<SettingsShell> {
     children.add(_statuses(cupertino));
     children.add(
       _action(
-        'Reset common settings',
+        '共通設定を初期値に戻す',
         'settings-reset',
         () => _reset(cupertino),
         cupertino,
@@ -149,7 +149,7 @@ class _SettingsShellState extends State<SettingsShell> {
             : Scaffold(
                 appBar: applicationTextAppBar(
                   context,
-                  title: 'Settings',
+                  title: '設定',
                   width: constraints.maxWidth,
                 ),
                 body: body,
@@ -158,13 +158,11 @@ class _SettingsShellState extends State<SettingsShell> {
     }
     return cupertino
         ? CupertinoPageScaffold(
-            navigationBar: const CupertinoNavigationBar(
-              middle: Text('Settings'),
-            ),
+            navigationBar: const CupertinoNavigationBar(middle: Text('設定')),
             child: body,
           )
         : Scaffold(
-            appBar: AppBar(title: const Text('Settings')),
+            appBar: AppBar(title: const Text('設定')),
             body: body,
           );
   }
@@ -182,10 +180,7 @@ class _SettingsShellState extends State<SettingsShell> {
         definition.choices.any((choice) => choice.value == false) &&
         definition.choices.any((choice) => choice.value == true);
     final key = ValueKey('settings-control:${definition.id}');
-    final description = [
-      label,
-      if (!enabled) 'Unavailable in this environment',
-    ].join('\n');
+    final description = [label, if (!enabled) 'この環境では利用できません'].join('\n');
     void toggle(bool next) {
       if (_permits(view, definition)) view.setValue(definition.id, next);
     }
@@ -243,7 +238,7 @@ class _SettingsShellState extends State<SettingsShell> {
       final selected = entry.value == current;
       final title = Semantics(
         selected: selected,
-        value: selected ? 'Current value' : null,
+        value: selected ? '現在の値' : null,
         child: _modalText(
           '${selected ? '✓ ' : ''}${entry.label}',
           logicalSize: cupertino ? 21 : null,
@@ -273,7 +268,7 @@ class _SettingsShellState extends State<SettingsShell> {
           ],
           cancelButton: CupertinoActionSheetAction(
             onPressed: () => Navigator.of(modalContext).pop(),
-            child: _modalText('Cancel', logicalSize: 21),
+            child: _modalText('キャンセル', logicalSize: 21),
           ),
         ),
       );
@@ -303,11 +298,11 @@ class _SettingsShellState extends State<SettingsShell> {
       void cancel() => Navigator.of(modalContext).pop(false);
       void reset() => Navigator.of(modalContext).pop(true);
       final title = _modalText(
-        'Reset common settings?',
+        '共通設定を初期値に戻しますか？',
         logicalSize: cupertino ? 17 : null,
       );
       final explanation = _modalText(
-        'Restore common defaults. Application settings are kept.',
+        '共通設定を初期値に戻します。アプリ固有の設定は保持されます。',
         logicalSize: cupertino ? 13 : null,
       );
       return cupertino
@@ -318,12 +313,12 @@ class _SettingsShellState extends State<SettingsShell> {
                 CupertinoDialogAction(
                   key: cancelKey,
                   onPressed: cancel,
-                  child: _modalText('Cancel', logicalSize: 16.8),
+                  child: _modalText('キャンセル', logicalSize: 16.8),
                 ),
                 CupertinoDialogAction(
                   key: resetKey,
                   onPressed: reset,
-                  child: _modalText('Reset', logicalSize: 16.8),
+                  child: _modalText('初期値に戻す', logicalSize: 16.8),
                 ),
               ],
             )
@@ -337,12 +332,12 @@ class _SettingsShellState extends State<SettingsShell> {
                 TextButton(
                   key: cancelKey,
                   onPressed: cancel,
-                  child: _modalText('Cancel'),
+                  child: _modalText('キャンセル'),
                 ),
                 TextButton(
                   key: resetKey,
                   onPressed: reset,
-                  child: _modalText('Reset'),
+                  child: _modalText('初期値に戻す'),
                 ),
               ],
             );
@@ -370,56 +365,39 @@ class _SettingsShellState extends State<SettingsShell> {
     final children = <Widget>[];
     switch (snapshot.readState) {
       case SettingsReadState.notLoaded:
-        children.add(const Text('Settings not loaded'));
-        children.add(
-          _action('Load settings', 'settings-load', view.load, cupertino),
-        );
+        children.add(const Text('設定をまだ読み込んでいません'));
+        children.add(_action('設定を読み込む', 'settings-load', view.load, cupertino));
       case SettingsReadState.loading:
-        children.add(const Text('Loading settings'));
+        children.add(const Text('設定を読み込んでいます'));
       case SettingsReadState.failed:
-        children.add(const Text('Settings could not be loaded'));
+        children.add(const Text('設定を読み込めませんでした'));
         children.add(
-          _action(
-            'Retry loading',
-            'settings-retry-load',
-            view.retryLoad,
-            cupertino,
-          ),
+          _action('読み込みを再試行', 'settings-retry-load', view.retryLoad, cupertino),
         );
       case SettingsReadState.unsupported:
-        children.add(const Text('Unsupported settings format'));
+        children.add(const Text('この設定形式には対応していません'));
         children.add(
-          _action(
-            'Retry loading',
-            'settings-retry-load',
-            view.retryLoad,
-            cupertino,
-          ),
+          _action('読み込みを再試行', 'settings-retry-load', view.retryLoad, cupertino),
         );
       case SettingsReadState.ready:
         break;
     }
     switch (snapshot.saveState) {
       case SettingsSaveState.saving:
-        children.add(const Text('Saving settings'));
+        children.add(const Text('設定を保存しています'));
       case SettingsSaveState.failed:
-        children.add(const Text('Settings could not be saved'));
+        children.add(const Text('設定を保存できませんでした'));
         children.add(
-          _action(
-            'Retry saving',
-            'settings-retry-save',
-            view.retrySave,
-            cupertino,
-          ),
+          _action('保存を再試行', 'settings-retry-save', view.retrySave, cupertino),
         );
       case SettingsSaveState.idle:
         break;
     }
     if (snapshot.unsavedIds.isNotEmpty) {
-      children.add(const Text('Unsaved changes'));
+      children.add(const Text('未保存の変更があります'));
     } else if (snapshot.readState == SettingsReadState.ready &&
         snapshot.saveState == SettingsSaveState.idle) {
-      children.add(const Text('Changes saved'));
+      children.add(const Text('設定を保存しました'));
     }
     return Padding(
       padding: const EdgeInsets.all(16),
