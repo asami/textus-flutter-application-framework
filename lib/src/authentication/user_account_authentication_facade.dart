@@ -45,6 +45,7 @@ class UserAccountAuthenticationFacade extends ChangeNotifier {
       !busy &&
       snapshot.status == UserAccountAuthenticationStatus.challengeRequired;
   bool get canRefresh => _configured && !busy && snapshot.isAuthenticated;
+  bool get canRestore => !isClosed && _client.canRestore;
   bool get canCancel =>
       _configured &&
       (snapshot.status == UserAccountAuthenticationStatus.signingIn ||
@@ -73,6 +74,13 @@ class UserAccountAuthenticationFacade extends ChangeNotifier {
   Future<void> refresh() async {
     _require(canRefresh);
     await _client.refresh();
+    _changed();
+  }
+
+  /// Explicit owner action; construction and account presentation remain inert.
+  Future<void> restore() async {
+    _require(canRestore);
+    await _client.restore();
     _changed();
   }
 

@@ -1,8 +1,8 @@
 # Common User Account login facade and navigation
 
 Decision date: 2026-10-31
-Status: shared presentation foundation implemented; real-provider/native/App
-integration and acceptance pending
+Status: shared presentation and explicit Core restoration forwarding implemented;
+native/server and whole-Phase acceptance pending
 
 Provide common login/account/logout presentation and authenticated navigation
 through the [Flutter Core authentication client](../../../textus-flutter-core/docs/spec/user-account-authentication-client.md).
@@ -41,11 +41,11 @@ configured Core owner, or an honest `UserAccountAuthenticationClient.unavailable
 while the real adapter is absent. Construction subscribes to safe notifications
 and performs zero IO. Core's constructor also performs zero IO. The facade
 retains the client privately; public getters expose only `snapshot`, `busy`,
-`isClosed` and `canSignIn`, `canVerifyChallenge`, `canRefresh`, `canCancel`,
+`isClosed` and `canSignIn`, `canVerifyChallenge`, `canRefresh`, `canRestore`, `canCancel`,
 `canSignOut`. It stores no credential or independent account/session state.
 
 The command methods forward exact sign-in identifier/password and challenge
-code, refresh, cancel and logout to Core. Admission follows Core status and
+code, explicit restore, refresh, cancel and logout to Core. Admission follows Core status and
 busy state: sign-in requires idle signed-out/failure state, verification idle
 email challenge, refresh idle authentication. A failed local logout blocks
 sign-in until explicit logout retry succeeds. Cancel remains available during
@@ -54,6 +54,19 @@ no new action. Logout may retire accepted authentication work. All admission
 flags are false once the facade/client is closed or the client is unavailable.
 Local admission errors contain fixed safe text. Core owns serialization,
 challenge references, retirement, account validation and refresh semantics.
+
+`canRestore` delegates to the current borrowed Core client's restoration
+admission while the facade remains open. Explicit `restore()` requires that
+admission, forwards once to `client.restore()` and publishes the normal safe
+change notification. Core uses the existing refreshing state, so its current
+progress rendering and cancellation capability apply without new status values.
+The facade, panel and page never restore in constructors, mounting, rebuilding,
+navigation or disposal. The application owner may explicitly restore after
+selecting its configured authority; it alone owns that startup policy. Restored
+account identity must come from Core's server-authorized account lookup, never
+from a locally cached display label. Active restore uses the same cancellation,
+close drain, borrowed/owned lifetime and reentrant notification rules as other
+Core work.
 
 The facade borrows its client by default. `close()` immediately unsubscribes
 and withdraws the visible account into a stable safe closed snapshot; a
@@ -113,7 +126,8 @@ Merely presenting this route neither protects a business route nor resumes a
 protected submission. Real protected navigation, authenticated transport and
 account-safe queue ownership remain explicit App/Core integration requirements.
 
-The [Core client specification](../../../textus-flutter-core/docs/spec/user-account-authentication-client.md)
+Historical foundation evidence (2026-10-31): the
+[Core client specification](../../../textus-flutter-core/docs/spec/user-account-authentication-client.md)
 and [Core foundation handoff](../../../textus-flutter-core/docs/journal/2026/10/2026-10-31-user-account-authentication-foundation.md)
 record normalized backend semantics and source-only server-owner findings:
 Studio `5ca141b`, user-account `fab35a1`. ESS5-01/02 participant HTTP/ownership
@@ -123,8 +137,10 @@ participant ownership. Framework supplies no guessed URL, wire envelope,
 credential vault or session substitute. Controlled test backends establish only
 foundation behavior, not real login or device/server acceptance.
 
-Real Core HTTP/native protected storage, cancellation-safe credential commit,
-participant ownership, App/queue binding and genuine Android login, refresh,
+Core now provides the concrete HTTP/native protected-storage connection and
+explicit restoration contract consumed by App; Framework supplies no additional
+transport or credential store. Source integration does not establish native or
+server acceptance. Participant ownership, App/queue binding and genuine Android login, refresh,
 correct-owner submission and logout remain required. Android-first work does
 not reduce iPhone acceptance; iPhone-specific development waits until
 2026-11-03 or later. Large-screen Web/browser-adapter acceptance remains required.

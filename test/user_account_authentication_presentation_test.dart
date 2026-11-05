@@ -6,6 +6,94 @@ import 'package:textus_flutter_application_framework/textus_flutter_application_
 import 'package:textus_flutter_core/textus_flutter_core.dart';
 
 void main() {
+  group('explicit Core restoration forwarding', () {
+    testWidgets('restoration requires an explicit owner command', (tester) async {
+      // Given a borrowed real Core client with a controlled restorable port.
+      final backend = _RestorableBackend();
+      final client = UserAccountAuthenticationClient(backend: backend);
+      final facade = UserAccountAuthenticationFacade(client: client);
+      expect(facade.canRestore, isTrue);
+      // When the shared page mounts, no restore or other backend action runs.
+      await _mount(tester, facade);
+      expect(backend.calls, isEmpty);
+      expect(find.text('ログインID'), findsOneWidget);
+      await facade.restore();
+      await tester.pumpAndSettle();
+      // Then one explicit call publishes only Core's authoritative account.
+      expect(backend.calls, ['restore']);
+      expect(facade.snapshot, same(client.snapshot));
+      expect(find.text('Authority Name'), findsOneWidget);
+      expect(facade.canRestore, isFalse);
+      await expectLater(facade.restore(), throwsStateError);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await facade.close();
+      expect(facade.canRestore, isFalse);
+      expect(client.isClosed, isFalse);
+      expect(backend.closes, 0);
+      facade.dispose();
+      await client.close();
+    });
+
+    for (final retire in ['cancel', 'owned close', 'borrowed close']) {
+      test('active restoration obeys $retire ownership and drain', () async {
+        // Given an actual Core restore held at its test-only authority port.
+        final result = Completer<UserAccountSignInResult?>();
+        final backend = _RestorableBackend()..onRestore = () => result.future;
+        final client = UserAccountAuthenticationClient(
+          backend: backend,
+          ownsBackend: true,
+        );
+        final facade = UserAccountAuthenticationFacade(
+          client: client,
+          ownsClient: retire == 'owned close',
+        );
+        final restoring = facade.restore();
+        expect(backend.calls, ['restore']);
+        expect(facade.canRestore, isFalse);
+        expect(facade.canCancel, isTrue);
+        expect(facade.snapshot.status, UserAccountAuthenticationStatus.refreshing);
+        await expectLater(facade.restore(), throwsStateError);
+        final operation = backend.operations.single;
+        // When the owner retires the operation or only its borrowing facade.
+        var drained = false;
+        final retirement = (retire == 'cancel' ? facade.cancel() : facade.close())
+            .then((_) { drained = true; });
+        if (retire == 'borrowed close') {
+          await retirement;
+          expect(operation.isCurrent, isTrue);
+        } else {
+          expect(operation.isCurrent, isFalse);
+          expect(drained, isFalse);
+        }
+        result.complete(UserAccountSignedIn(_account()));
+        await Future.wait([restoring, retirement]);
+        // Then only borrowed close leaves the real owner's operation authoritative.
+        expect(client.snapshot.isAuthenticated, retire == 'borrowed close');
+        expect(backend.closes, retire == 'owned close' ? 1 : 0);
+        expect(facade.canRestore, retire == 'cancel');
+        facade.dispose();
+        await client.close();
+        expect(backend.closes, 1);
+      });
+    }
+
+    test('ordinary and unavailable clients cannot restore', () async {
+      // Given real Core clients without a restoration authority.
+      final clients = [
+        UserAccountAuthenticationClient(backend: _ControlledBackend()),
+        UserAccountAuthenticationClient.unavailable(),
+      ];
+      for (final client in clients) {
+        final facade = UserAccountAuthenticationFacade(client: client);
+        // When an explicit restore is attempted without Core admission.
+        expect(facade.canRestore, isFalse);
+        await expectLater(facade.restore(), throwsStateError);
+        // Then presentation remains unchanged and closes without borrowed IO.
+        facade.dispose();
+        await client.close();
+      }
+    });
+  });
   group('safe construction and command admission', () {
     testWidgets(
       'should construct and mount without IO and explain unavailable login',
@@ -875,6 +963,7 @@ void main() {
 }
 
 List<bool> _flags(UserAccountAuthenticationFacade facade) => [
+  facade.canRestore,
   facade.canSignIn,
   facade.canVerifyChallenge,
   facade.canRefresh,
@@ -1011,5 +1100,22 @@ class _ControlledBackend implements UserAccountAuthenticationBackend {
     closes++;
     final failure = closeFailure;
     if (failure != null) throw failure;
+  }
+}
+
+/// Only tests facade command forwarding; concrete HTTP is exercised by App.
+final class _RestorableBackend extends _ControlledBackend
+    implements UserAccountRestorableAuthenticationBackend {
+  FutureOr<UserAccountSignInResult?> Function()? onRestore;
+
+  @override
+  Future<UserAccountSignInResult?> restore({
+    required UserAccountAuthenticationOperation operation,
+  }) async {
+    calls.add('restore');
+    operations.add(operation);
+    return onRestore == null
+        ? UserAccountSignedIn(_account())
+        : await onRestore!();
   }
 }
