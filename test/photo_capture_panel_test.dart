@@ -268,7 +268,7 @@ void main() {
               controller.availability.last.state,
               RecognitionProviderState.available,
             );
-            expect(find.text('Preparing geminiNano'), findsNothing);
+            expect(find.text('利用準備中 geminiNano'), findsNothing);
             expect(enhanced.inputs, isEmpty);
             expect(controller.desiredConfigurationId, 'androidStandard');
           }
@@ -462,7 +462,7 @@ void main() {
         find.byKey(const ValueKey('photo-capture-configuration')),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Pixel enhanced').last);
+      await tester.tap(find.text('端末内AIで補完（対応端末）').last);
       await tester.pumpAndSettle();
       await tester.runAsync(view.retrySave);
       await _command(tester, controller, 'capture');
@@ -483,31 +483,31 @@ void main() {
         find.byKey(const ValueKey('recognition-run-pixelEnhanced')),
         findsOneWidget,
       );
-      expect(find.text('Actual: pixelEnhanced'), findsOneWidget);
-      expect(find.text('Fallback reason: none'), findsNWidgets(2));
+      expect(find.text('実際の構成: pixelEnhanced'), findsOneWidget);
+      expect(find.text('標準処理への切替理由: なし'), findsNWidgets(2));
       expect(
         find.text(
-          'Candidate 0: kind "unknown kind"; value " opaque proposal "',
+          '候補 0: 種類 "unknown kind"; 値 " opaque proposal "',
         ),
         findsOneWidget,
       );
       expect(
         find.text(
-          'Candidate 1: kind "unknown kind"; value " opaque proposal "',
+          '候補 1: 種類 "unknown kind"; 値 " opaque proposal "',
         ),
         findsOneWidget,
       );
       expect(
-        find.text('Barcode 0: " second "; format "rawFormat"'),
+        find.text('バーコード 0: " second "; 形式 "rawFormat"'),
         findsNWidgets(2),
       );
       expect(
-        find.text('Barcode 1: "first"; format "anotherFormat"'),
+        find.text('バーコード 1: "first"; 形式 "anotherFormat"'),
         findsNWidgets(2),
       );
       expect(find.text('OCR: " raw OCR "'), findsNWidgets(2));
       expect(
-        find.text('Interpretation: " raw interpretation "'),
+        find.text('画像の解釈結果: " raw interpretation "'),
         findsOneWidget,
       );
       for (final run in compared.runs) {
@@ -516,7 +516,7 @@ void main() {
         // Then row and attempt milliseconds are displayed without invented timing.
         expect(
           find.text(
-            'Row elapsed: ${run.elapsed.inMilliseconds} ms (includes shared work)',
+            '構成の処理時間: ${run.elapsed.inMilliseconds} ms（共通処理を含む）',
           ),
           findsWidgets,
         );
@@ -525,12 +525,12 @@ void main() {
           // When its presentation is observed.
           // Then the exact elapsed milliseconds remain visible.
           expect(
-            find.text('Attempt elapsed: ${attempt.elapsed.inMilliseconds} ms'),
+            find.text('試行の処理時間: ${attempt.elapsed.inMilliseconds} ms'),
             findsWidgets,
           );
         }
       }
-      expect(find.textContaining('shared work'), findsWidgets);
+      expect(find.textContaining('共通処理'), findsWidgets);
       expect(compared.material, same(captured.material));
       expect(camera.captures, 1);
       expect(store.imports, 1);
@@ -575,7 +575,7 @@ void main() {
       await tester.runAsync(_settle);
       await tester.pump();
       // Then busy/preparing are visible and every action is disabled.
-      expect(find.text('Preparing geminiNano'), findsOneWidget);
+      expect(find.text('利用準備中 geminiNano'), findsOneWidget);
       expect(enhanced.prepares, 1);
       for (final id in [
         'refresh',
@@ -609,8 +609,8 @@ void main() {
       await tester.runAsync(() => _waitIdle(controller));
       await tester.pumpAndSettle();
       // Then model availability is visible without inference, callback or preference change.
-      expect(find.text('Provider geminiNano: available'), findsOneWidget);
-      expect(find.text('Model: fixture-model'), findsNWidgets(2));
+      expect(find.text('認識処理 geminiNano: 利用可能'), findsOneWidget);
+      expect(find.text('利用モデル: fixture-model'), findsNWidgets(2));
       expect(enhanced.inputs, isEmpty);
       expect(callbacks, isEmpty);
       expect(controller.desiredConfigurationId, 'androidStandard');
@@ -619,8 +619,8 @@ void main() {
       // When availability is refreshed explicitly.
       await _command(tester, controller, 'refresh');
       // Then preparing is displayed and another Prepare action is absent.
-      expect(find.text('Provider geminiNano: preparing'), findsOneWidget);
-      expect(find.text('Preparing geminiNano'), findsOneWidget);
+      expect(find.text('認識処理 geminiNano: 準備中'), findsOneWidget);
+      expect(find.text('利用準備中 geminiNano'), findsOneWidget);
       expect(
         find.byKey(const ValueKey('photo-capture-prepare-geminiNano')),
         findsNothing,
@@ -642,11 +642,14 @@ void main() {
       // When an actual report write fails through Compare.
       store.writeError = StateError('actual report write failure');
       await _command(tester, controller, 'compare');
-      // Then UI catches the Future, displays the actual reason and retains the accepted report.
+      // Then the UI presents a fixed failure while the model retains its actual error and accepted report.
       expect(
-        find.textContaining('actual report write failure'),
+        find.text('撮影・認識の処理を完了できませんでした。'),
         findsOneWidget,
       );
+      expect(find.textContaining('actual report write failure'), findsNothing);
+      expect(controller.error, isA<StateError>());
+      expect(controller.error.toString(), contains('actual report write failure'));
       expect(controller.comparison, same(previous));
       expect(callbacks, [previous]);
       expect(tester.takeException(), isNull);
@@ -657,11 +660,14 @@ void main() {
       await _command(tester, controller, 'refresh');
       // When its visible Prepare action is used.
       await _command(tester, controller, 'prepare-geminiNano');
-      // Then preparation failure is displayed without replacing the report or emitting a callback.
+      // Then the fixed UI failure and retained actual model error leave the report unchanged.
       expect(
-        find.textContaining('actual model preparation failure'),
+        find.text('撮影・認識の処理を完了できませんでした。'),
         findsOneWidget,
       );
+      expect(find.textContaining('actual model preparation failure'), findsNothing);
+      expect(controller.error, isA<StateError>());
+      expect(controller.error.toString(), contains('actual model preparation failure'));
       expect(controller.comparison, same(previous));
       expect(callbacks, [previous]);
       // Given camera cancellation for both acquisition entry points.
@@ -672,7 +678,7 @@ void main() {
       // Then no new report callback is emitted and previous output stays visible.
       expect(callbacks, [previous]);
       expect(controller.comparison, same(previous));
-      expect(find.text('Comparison: ${previous.id}'), findsOneWidget);
+      expect(find.text('比較ID: ${previous.id}'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
     },
@@ -687,7 +693,7 @@ void main() {
       // When construction and mount are observed.
       // Then no load starts and acquisition stays disabled.
       expect(storage.reads, 0);
-      expect(find.text('Settings read: notLoaded'), findsOneWidget);
+      expect(find.text('設定の読込: 未読込'), findsOneWidget);
       expect(
         tester
             .widget<ElevatedButton>(
@@ -702,7 +708,7 @@ void main() {
       await tester.pump();
       // When the read is still pending.
       // Then loading is visible independently of photo capability.
-      expect(find.text('Settings read: loading'), findsOneWidget);
+      expect(find.text('設定の読込: 読込中'), findsOneWidget);
       expect(controller.busy, isTrue);
       // Given completion with the actual error.
       storage.readGate!.completeError(
@@ -712,12 +718,15 @@ void main() {
       // When the controller's retry settles.
       await tester.runAsync(() => _waitIdle(controller));
       await tester.pumpAndSettle();
-      // Then read failure remains visible and capture stays blocked.
-      expect(find.text('Settings read: failed'), findsOneWidget);
+      // Then the fixed UI message and actual snapshot error remain visible while capture stays blocked.
+      expect(find.text('設定の読込: 読込失敗'), findsOneWidget);
       expect(
-        find.textContaining('actual settings read failure'),
+        find.text('設定を読み込めませんでした。'),
         findsOneWidget,
       );
+      expect(find.textContaining('actual settings read failure'), findsNothing);
+      expect(view.snapshot.readError, isA<StateError>());
+      expect(view.snapshot.readError.toString(), contains('actual settings read failure'));
       expect(camera.captures, 0);
       // Given supported storage and a failing next write.
       storage.writeError = StateError('actual settings save failure');
@@ -727,19 +736,24 @@ void main() {
       await tester.runAsync(_settle);
       await tester.pumpAndSettle();
       // Then the independent save failure/unsaved state is visible.
-      expect(find.text('Settings read: ready'), findsOneWidget);
-      expect(find.text('Settings save: failed'), findsOneWidget);
-      expect(find.text('Settings unsaved'), findsOneWidget);
+      expect(find.text('設定の読込: 読込済み'), findsOneWidget);
+      expect(find.text('設定の保存: 保存失敗'), findsOneWidget);
+      expect(find.text('未保存の設定があります'), findsOneWidget);
       expect(
-        find.textContaining('actual settings save failure'),
+        find.text('設定を保存できませんでした。'),
         findsOneWidget,
       );
+      expect(find.textContaining('actual settings save failure'), findsNothing);
+      expect(view.snapshot.saveError, isA<StateError>());
+      expect(view.snapshot.saveError.toString(), contains('actual settings save failure'));
       // Given the same failing storage.
       // When a UI retry Future settles normally according to Core's contract.
       await _command(tester, controller, 'retry-save');
       // Then UI still says unsaved and never claims durability.
-      expect(find.text('Settings unsaved'), findsOneWidget);
-      expect(find.text('Settings save: failed'), findsOneWidget);
+      expect(find.text('未保存の設定があります'), findsOneWidget);
+      expect(find.text('設定の保存: 保存失敗'), findsOneWidget);
+      expect(find.text('設定を保存できませんでした。'), findsOneWidget);
+      expect(find.textContaining('actual settings save failure'), findsNothing);
       // Given a held successful write retry.
       storage.writeError = null;
       storage.writeGate = Completer<void>();
@@ -752,15 +766,15 @@ void main() {
       await tester.pump();
       // When actual acknowledgement is pending.
       // Then saving is rendered alongside unsaved state.
-      expect(find.text('Settings save: saving'), findsOneWidget);
-      expect(find.text('Settings unsaved'), findsOneWidget);
+      expect(find.text('設定の保存: 保存中'), findsOneWidget);
+      expect(find.text('未保存の設定があります'), findsOneWidget);
       // Given actual storage acknowledgement.
       storage.writeGate!.complete();
       // When the retry settles.
       await tester.runAsync(() => _waitIdle(controller));
       await tester.pumpAndSettle();
       // Then the UI follows the acknowledged snapshot and settings commands emitted no result callbacks.
-      expect(find.text('No unsaved settings'), findsOneWidget);
+      expect(find.text('設定は保存済みです'), findsOneWidget);
       expect(
         find.byKey(const ValueKey('photo-capture-retry-save')),
         findsNothing,
@@ -785,9 +799,9 @@ void main() {
       // When the borrowed panel displays saved history and independent readiness.
       await _command(tester, controller, 'refresh');
       // Then saved output remains readable with acquisition and saved inference blocked by settings.
-      expect(find.text('Camera acquisition unsupported'), findsOneWidget);
-      expect(find.text('Settings read: unsupported'), findsOneWidget);
-      expect(find.text('Comparison: ${saved!.id}'), findsOneWidget);
+      expect(find.text('この端末では撮影を利用できません'), findsOneWidget);
+      expect(find.text('設定の読込: 利用不可'), findsOneWidget);
+      expect(find.text('比較ID: ${saved!.id}'), findsOneWidget);
       expect(
         find.byKey(const ValueKey('photo-capture-retry-load')),
         findsOneWidget,
@@ -883,34 +897,34 @@ void main() {
       );
       // Then empty completed output and all raw stages remain explicit and error-free.
       expect(find.text('OCR: ""'), findsWidgets);
-      expect(find.text('Barcode completed: true'), findsWidgets);
+      expect(find.text('バーコード認識: 完了'), findsWidgets);
       expect(
-        find.text('Candidate organization completed: false'),
+        find.text('候補の整理: 未完了'),
         findsWidgets,
       );
-      expect(find.text('Interpretation: ""'), findsWidgets);
+      expect(find.text('画像の解釈結果: ""'), findsWidgets);
       expect(
-        find.text('Candidate 0: kind "unknown kind"; value " same raw "'),
-        findsWidgets,
-      );
-      expect(
-        find.text('Candidate 1: kind "unknown kind"; value " same raw "'),
+        find.text('候補 0: 種類 "unknown kind"; 値 " same raw "'),
         findsWidgets,
       );
       expect(
-        find.text('Failure: cleanup / rawCode / raw failure message'),
+        find.text('候補 1: 種類 "unknown kind"; 値 " same raw "'),
         findsWidgets,
       );
-      expect(find.textContaining('shared work'), findsWidgets);
       expect(
-        find.textContaining('Input attempt IDs: ["recognition'),
+        find.text('失敗: 後処理 (cleanup) / rawCode / raw failure message'),
+        findsWidgets,
+      );
+      expect(find.textContaining('共通処理'), findsWidgets);
+      expect(
+        find.textContaining('入力の試行ID: ["recognition'),
         findsWidgets,
       );
       expect(tester.takeException(), isNull);
       // Given expandable provenance and scrollable embedding.
       // When provenance expands and the acquisition controls are brought into view.
-      await tester.ensureVisible(find.text('Provenance details').first);
-      await tester.tap(find.text('Provenance details').first);
+      await tester.ensureVisible(find.text('出典の詳細').first);
+      await tester.tap(find.text('出典の詳細').first);
       await tester.pumpAndSettle();
       await tester.ensureVisible(find.text(jsonEncode(raw.extensions)));
       await tester.ensureVisible(
@@ -942,10 +956,10 @@ void main() {
       );
       // Then empty completed candidates are explicitly represented.
       expect(
-        find.text('Candidate organization completed: true'),
+        find.text('候補の整理: 完了'),
         findsOneWidget,
       );
-      expect(find.text('Candidate count: 0'), findsNWidgets(2));
+      expect(find.text('候補数: 0'), findsNWidgets(2));
       // Given enhanced unavailability on a later same-original comparison.
       enhanced.state = RecognitionProviderState.unavailable;
       // When common comparison renders the Core fallback report.
@@ -960,14 +974,14 @@ void main() {
         ),
       );
       // Then unavailable nonexecuted work and explicit fallback reason are visible.
-      expect(find.text('Actual: androidStandard'), findsNWidgets(2));
+      expect(find.text('実際の構成: androidStandard'), findsNWidgets(2));
       expect(
-        find.textContaining('Fallback reason: geminiNano:'),
+        find.textContaining('標準処理への切替理由: geminiNano:'),
         findsOneWidget,
       );
-      expect(find.text('Provider: geminiNano; nonexecuted'), findsOneWidget);
-      expect(find.text('Availability: unavailable'), findsOneWidget);
-      expect(find.textContaining('Failure: availability /'), findsOneWidget);
+      expect(find.text('認識処理: geminiNano; 未実行'), findsOneWidget);
+      expect(find.text('利用状態: 利用不可'), findsOneWidget);
+      expect(find.textContaining('失敗: 利用可否 (availability) /'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
     },

@@ -5,6 +5,39 @@ import '../capture/photo_capture_controller.dart';
 import 'application_text_scaling.dart';
 import 'recognition_comparison_view.dart';
 
+String _settingsReadLabel(SettingsReadState state) => switch (state) {
+  SettingsReadState.notLoaded => '未読込',
+  SettingsReadState.loading => '読込中',
+  SettingsReadState.ready => '読込済み',
+  SettingsReadState.failed => '読込失敗',
+  SettingsReadState.unsupported => '利用不可',
+};
+
+String _settingsSaveLabel(SettingsSaveState state) => switch (state) {
+  SettingsSaveState.idle => '待機中',
+  SettingsSaveState.saving => '保存中',
+  SettingsSaveState.failed => '保存失敗',
+};
+
+String _providerStateLabel(RecognitionProviderState state) => switch (state) {
+  RecognitionProviderState.available => '利用可能',
+  RecognitionProviderState.unavailable => '利用不可',
+  RecognitionProviderState.downloadable => 'ダウンロード可能',
+  RecognitionProviderState.preparing => '準備中',
+};
+
+String _configurationLabel(RecognitionConfiguration configuration) {
+  if (configuration.id == RecognitionSettings.androidStandard &&
+      configuration.label == 'Standard Android') {
+    return '標準認識';
+  }
+  if (configuration.id == RecognitionSettings.pixelEnhanced &&
+      configuration.label == 'Pixel enhanced') {
+    return '端末内AIで補完（対応端末）';
+  }
+  return configuration.label;
+}
+
 /// Embeddable interaction UI borrowing a controller initialized by its owner.
 /// It neither starts restoration on mount nor owns any service lifetime.
 class PhotoCapturePanel extends StatefulWidget {
@@ -141,7 +174,7 @@ class _PhotoCapturePanelState extends State<PhotoCapturePanel> {
       final content = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Desired recognition configuration'),
+          const Text('希望する認識構成'),
           DropdownButton<String>(
             key: const ValueKey('photo-capture-configuration'),
             value: controller.desiredConfigurationId,
@@ -154,11 +187,11 @@ class _PhotoCapturePanelState extends State<PhotoCapturePanel> {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     child: Text(
-                      controller.configurations
-                          .firstWhere(
-                            (configuration) => configuration.id == choice.value,
-                          )
-                          .label,
+                      _configurationLabel(
+                        controller.configurations.firstWhere(
+                          (configuration) => configuration.id == choice.value,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -177,41 +210,28 @@ class _PhotoCapturePanelState extends State<PhotoCapturePanel> {
                     }
                   },
           ),
-          Text('Settings read: ${snapshot.readState.name}'),
-          if (snapshot.readError != null)
-            Text('Settings read error: ${snapshot.readError}'),
+          Text('設定の読込: ${_settingsReadLabel(snapshot.readState)}'),
+          if (snapshot.readError != null) const Text('設定を読み込めませんでした。'),
           if (snapshot.readState == SettingsReadState.notLoaded ||
               snapshot.readState == SettingsReadState.failed ||
               snapshot.readState == SettingsReadState.unsupported)
-            button(
-              'retry-load',
-              'Retry settings load',
-              controller.retrySettingsLoad,
-            ),
-          Text('Settings save: ${snapshot.saveState.name}'),
-          Text(
-            snapshot.hasUnsavedChanges
-                ? 'Settings unsaved'
-                : 'No unsaved settings',
-          ),
-          if (snapshot.saveError != null)
-            Text('Settings save error: ${snapshot.saveError}'),
+            button('retry-load', '設定の読込を再試行', controller.retrySettingsLoad),
+          Text('設定の保存: ${_settingsSaveLabel(snapshot.saveState)}'),
+          Text(snapshot.hasUnsavedChanges ? '未保存の設定があります' : '設定は保存済みです'),
+          if (snapshot.saveError != null) const Text('設定を保存できませんでした。'),
           if (snapshot.hasUnsavedChanges ||
               snapshot.saveState == SettingsSaveState.failed)
-            button(
-              'retry-save',
-              'Retry settings save',
-              controller.retrySettingsSave,
-            ),
-          if (!controller.isSupported)
-            const Text('Camera acquisition unsupported'),
+            button('retry-save', '設定の保存を再試行', controller.retrySettingsSave),
+          if (!controller.isSupported) const Text('この端末では撮影を利用できません'),
           for (final provider in controller.availability) ...[
-            Text('Provider ${provider.providerId}: ${provider.state.name}'),
+            Text(
+              '認識処理 ${provider.providerId}: ${_providerStateLabel(provider.state)}',
+            ),
             if (provider.modelName != null)
-              Text('Model: ${provider.modelName}'),
-            if (provider.reason != null) Text('Reason: ${provider.reason}'),
+              Text('利用モデル: ${provider.modelName}'),
+            if (provider.reason != null) Text('理由: ${provider.reason}'),
             if (provider.state == RecognitionProviderState.preparing)
-              Text('Preparing ${provider.providerId}'),
+              Text('利用準備中 ${provider.providerId}'),
             if (provider.state == RecognitionProviderState.downloadable)
               ElevatedButton(
                 key: ValueKey('photo-capture-prepare-${provider.providerId}'),
@@ -223,52 +243,47 @@ class _PhotoCapturePanelState extends State<PhotoCapturePanel> {
                         () => controller.prepareProvider(provider.providerId),
                         preparingProvider: provider.providerId,
                       ),
-                child: Text('Prepare ${provider.providerId}'),
+                child: Text('利用準備 ${provider.providerId}'),
               ),
           ],
-          if (_preparingProvider != null) Text('Preparing $_preparingProvider'),
+          if (_preparingProvider != null) Text('利用準備中 $_preparingProvider'),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              button(
-                'refresh',
-                'Refresh availability',
-                controller.refreshAvailability,
-              ),
+              button('refresh', '利用可否を再確認', controller.refreshAvailability),
               button(
                 'capture',
-                'Capture',
+                '撮影',
                 controller.capture,
                 allowed: enabled && controller.isSupported,
                 reportResult: true,
               ),
               button(
                 'recover',
-                'Recover capture',
+                '撮影結果を復元',
                 controller.recover,
                 allowed: enabled && controller.isSupported,
                 reportResult: true,
               ),
               button(
                 'recognize',
-                'Recognize saved image',
+                '保存済み画像を読み取る',
                 controller.recognizeCurrent,
                 allowed: enabled && report != null,
                 reportResult: true,
               ),
               button(
                 'compare',
-                'Compare same image',
+                '同じ画像の認識結果を比較',
                 controller.compareCurrent,
                 allowed: enabled && report != null,
                 reportResult: true,
               ),
             ],
           ),
-          if (controller.busy) const Text('Photo operation in progress'),
-          if (controller.error != null)
-            Text('Photo operation error: ${controller.error}'),
+          if (controller.busy) const Text('撮影・認識の処理中です'),
+          if (controller.error != null) const Text('撮影・認識の処理を完了できませんでした。'),
           if (report != null) RecognitionComparisonView(comparison: report),
         ],
       );
