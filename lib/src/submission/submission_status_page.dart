@@ -14,10 +14,12 @@ class SubmissionStatusPage extends StatefulWidget {
     this.handoffRegisteredMaterial,
     this.reconcileRegisteredMaterial,
     this.openSubjectLabel = '項目を開く',
+    this.executionMode = SubmissionExecutionMode.unknown,
     super.key,
   });
 
   final SubmissionStatusWorkspace workspace;
+  final SubmissionExecutionMode executionMode;
   final Future<void> Function(SubmissionTransferStatus status)? openSubject;
   final String openSubjectLabel;
   final Future<RegisteredMaterialHandoffCommandResult> Function(
@@ -237,6 +239,10 @@ class _SubmissionStatusPageState extends State<SubmissionStatusPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (widget.executionMode == SubmissionExecutionMode.foreground)
+          const Text(
+            'アプリを開いている間に送信します。閉じても送信待ちの内容は保持されます。',
+          ),
         if (record.status.usesLakeDelivery) ...[
           if (record.status.tklProgress case final progress?) ...[
             Text(
@@ -263,7 +269,7 @@ class _SubmissionStatusPageState extends State<SubmissionStatusPage> {
           Text(record.status.studioHandoff!.failure!.message),
         if (canReconcile && pending)
           const Text(
-            'Studioへの送信は待機中です。同じ保存済みリクエストでバックグラウンド処理の手配を再開します。',
+            'Studioへの送信は待機中です。同じ保存済みリクエストで送信処理の手配を再開します。',
           ),
         if (canReconcile && !pending)
           const Text(
@@ -297,9 +303,9 @@ class _SubmissionStatusPageState extends State<SubmissionStatusPage> {
               file.lakeProgress?.state != TklOriginalTransferState.uploaded)
             const Text('保存先へのアップロードは完了しています。TKLの確認待ちです。'),
         ],
-        if (notice) const Text('送信待ちに登録済みです。バックグラウンド処理の手配を確認してください。'),
+        if (notice) const Text('送信待ちに登録済みです。送信処理の手配を確認してください。'),
         if (_schedulingFailedId == record.id)
-          const Text('Studioへの送信は登録済みです。バックグラウンド処理の手配を確認してください。'),
+          const Text('Studioへの送信は登録済みです。送信処理の手配を確認してください。'),
         if (_handoffFailedId == record.id)
           const Text('Studioへの送信操作を実行できませんでした。'),
         if (_openFailed) const Text('項目を開けませんでした。'),

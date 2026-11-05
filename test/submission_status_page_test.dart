@@ -42,6 +42,82 @@ Future<void> showSubmissionDetail(
 void main() {
   // Exercise standard list/detail, exact two-stage status and explicit App navigation.
   group('CU3 CU4 standard submission status page', () {
+    testWidgets('actual foreground capability leaves queued and ACK truth read-only', (
+      tester,
+    ) async {
+      await tester.runAsync(() async {
+        // Given actual durable queued intent without any scheduler request.
+        final fixture = await SubmissionFixture.create();
+        final queue = await fixture.openQueue();
+        final service = fixture.service(queue);
+        final facade = SubmissionFacade(service: service);
+        final request = await fixture.request(withMaterials: false);
+        await queue.enqueue(request);
+        final workspace = SubmissionStatusWorkspace(
+          facade: facade,
+          presentationConfiguration: submissionPresentation(),
+          now: fixture.now,
+        );
+        const hint = 'アプリを開いている間に送信します。閉じても送信待ちの内容は保持されます。';
+        try {
+          // When the default unknown page mounts and reads the selected request.
+          final unknown = SubmissionStatusPage(workspace: workspace);
+          expect(unknown.executionMode, SubmissionExecutionMode.unknown);
+          await tester.pumpWidget(MaterialApp(home: unknown));
+          await settleSubmissionPage(tester, workspace);
+          await workspace.viewModel.select(request.id);
+          workspace.displayModel.openDetail();
+          await tester.pump();
+          // Then no execution capability or received acknowledgement is invented.
+          expect(find.text(hint), findsNothing);
+          expect(find.textContaining('受領済みサーバーID:'), findsNothing);
+          expect(fixture.scheduler.calls, 0);
+          expect(fixture.transport.submits, 0);
+
+          // When the actual foreground capability is supplied to the same owner.
+          await tester.pumpWidget(MaterialApp(
+            home: SubmissionStatusPage(
+              workspace: workspace,
+              executionMode: SubmissionExecutionMode.foreground,
+            ),
+          ));
+          await settleSubmissionPage(tester, workspace);
+          await showSubmissionDetail(tester, hint);
+          // Then capability is visible while queued intent remains unacknowledged.
+          expect(find.text(hint), findsOneWidget);
+          final queued = (workspace.viewModel.selectedResource
+              as SubmissionStatusResourceRecord).status;
+          expect(queued.acknowledgement, isNull);
+          expect(queued.submission.state, SubmissionTransferOperationState.queued);
+          expect((await queue.find(request.id))!.request, request);
+          expect(fixture.scheduler.calls, 0);
+          expect(fixture.transport.submits, 0);
+
+          // Given only the controlled Core owner explicitly processes this intent.
+          for (var attempt = 0; attempt < 3; attempt++) {
+            await service.processNext(networkAllowed: true);
+            if ((await queue.find(request.id))!.acknowledgement != null) break;
+          }
+          final ack = (await queue.find(request.id))!.acknowledgement!;
+          final submits = fixture.transport.submits;
+          // When common detail refreshes, it observes the persisted ACK verbatim.
+          await workspace.viewModel.detailView.refresh();
+          await tester.pump();
+          await showSubmissionDetail(tester, '受領済みサーバーID: ${ack.serverId}');
+          expect(find.text('受領済みサーバーID: ${ack.serverId}'), findsOneWidget);
+          expect((workspace.viewModel.selectedResource
+              as SubmissionStatusResourceRecord).status.acknowledgement, ack);
+          expect(fixture.scheduler.calls, 0);
+          expect(fixture.transport.submits, submits);
+          expect((await queue.list()).length, 1);
+        } finally {
+          await tester.pumpWidget(const SizedBox.shrink());
+          await workspace.detach();
+          await fixture.dispose();
+        }
+      });
+    });
+
     testWidgets('received server ID comes from the persisted Core ACK', (
       tester,
     ) async {
@@ -417,11 +493,11 @@ void main() {
             await tester.pump();
             await showSubmissionDetail(
               tester,
-              '送信待ちに登録済みです。バックグラウンド処理の手配を確認してください。',
+              '送信待ちに登録済みです。送信処理の手配を確認してください。',
             );
             expect(
               // Then one exact-request scheduling warning is distinct from server acknowledgement.
-              find.text('送信待ちに登録済みです。バックグラウンド処理の手配を確認してください。'),
+              find.text('送信待ちに登録済みです。送信処理の手配を確認してください。'),
               findsOneWidget,
             );
             expect(
@@ -434,7 +510,7 @@ void main() {
             await tester.pump();
             expect(
               // Then the unrelated warning is hidden.
-              find.text('送信待ちに登録済みです。バックグラウンド処理の手配を確認してください。'),
+              find.text('送信待ちに登録済みです。送信処理の手配を確認してください。'),
               findsNothing,
             );
             // Given the first request selected again.
@@ -447,7 +523,7 @@ void main() {
             // Then the previous notice is hidden while that exact action runs.
             expect(workspace.viewModel.actionRunning, isTrue);
             expect(
-              find.text('送信待ちに登録済みです。バックグラウンド処理の手配を確認してください。'),
+              find.text('送信待ちに登録済みです。送信処理の手配を確認してください。'),
               findsNothing,
             );
             final wakes = fixture.scheduler.calls;
@@ -461,11 +537,11 @@ void main() {
             await tester.pump();
             await showSubmissionDetail(
               tester,
-              '送信待ちに登録済みです。バックグラウンド処理の手配を確認してください。',
+              '送信待ちに登録済みです。送信処理の手配を確認してください。',
             );
             expect(
               // Then the current warning returns without transport execution.
-              find.text('送信待ちに登録済みです。バックグラウンド処理の手配を確認してください。'),
+              find.text('送信待ちに登録済みです。送信処理の手配を確認してください。'),
               findsOneWidget,
             );
             expect(fixture.transport.submits, 0);

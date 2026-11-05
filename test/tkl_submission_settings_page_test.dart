@@ -36,29 +36,29 @@ void main() {
         );
         await tester.pumpAndSettle();
         expect(store.reads, 0);
-        await _tap(tester, find.widgetWithText(TextButton, 'Reload'));
+        await _tap(tester, find.widgetWithText(TextButton, '再読み込み'));
         // Then mobile users are never asked to provision physical Google storage.
-        expect(_field('Drive ID'), findsNothing);
-        expect(_field('Account ID'), findsNothing);
-        expect(_field('Folder ID'), findsNothing);
-        expect(find.text('Default storage'), findsNothing);
-        expect(find.text('Save reference access declaration'), findsNothing);
-        expect(find.text('Authorize'), findsNothing);
-        expect(find.text('TKL service connection'), findsOneWidget);
+        expect(_field('Drive接続ID'), findsNothing);
+        expect(_field('Googleアカウント'), findsNothing);
+        expect(_field('フォルダーID'), findsNothing);
+        expect(find.text('原本の保存先'), findsNothing);
+        expect(find.text('原本の参照設定を保存'), findsNothing);
+        expect(find.text('利用を許可'), findsNothing);
+        expect(find.text('TKL接続'), findsOneWidget);
         expect(
           find.text(
-            'TKL supplies the destination and transfer instructions. Google storage is configured on the server.',
+            '保存先と転送方法はTKLが指定します。Google側の保存先はサーバーで設定します。',
           ),
           findsOneWidget,
         );
         // Given the TKL setup form and a new HTTP connection ID.
-        await tester.enterText(_field('HTTP ID'), 'lake');
+        await tester.enterText(_field('接続ID'), 'lake');
         await tester.enterText(
-          _field('TKL HTTPS service root (ends with /)'),
+          _field('TKLのHTTPS接続先（末尾は /）'),
           'https://lake.example.test/finalize',
         );
         // When Add HTTP receives an operation URL instead of a service root ending in a slash.
-        await _tap(tester, find.widgetWithText(TextButton, 'Add HTTP'));
+        await _tap(tester, find.widgetWithText(TextButton, 'HTTP接続を追加'));
         // Then the invalid connection is not stored.
         expect(
           store.value.httpConnections.any(
@@ -68,11 +68,11 @@ void main() {
         );
         // Given the same connection ID with a valid HTTPS delivery service root.
         await tester.enterText(
-          _field('TKL HTTPS service root (ends with /)'),
+          _field('TKLのHTTPS接続先（末尾は /）'),
           'https://lake.example.test/delivery/',
         );
         // When Add HTTP receives that valid service root.
-        await _tap(tester, find.widgetWithText(TextButton, 'Add HTTP'));
+        await _tap(tester, find.widgetWithText(TextButton, 'HTTP接続を追加'));
         // Then the stored connection requires a bearer and retains the exact service root.
         final connection = store.value.httpConnections.singleWhere(
           (connection) => connection.id == 'lake',

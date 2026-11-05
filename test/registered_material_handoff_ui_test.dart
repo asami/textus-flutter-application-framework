@@ -207,7 +207,7 @@ void main() {
               if (label == 'Studioの受領状況を照合') {
                 expect(find.textContaining('Studioが未受領の場合は、この操作で送信が行われることがあります。'), findsOneWidget);
               } else if (state == 'pending') {
-                expect(find.textContaining('同じ保存済みリクエストでバックグラウンド処理の手配を再開します。'), findsOneWidget);
+                expect(find.textContaining('同じ保存済みリクエストで送信処理の手配を再開します。'), findsOneWidget);
                 expect(find.textContaining('照合では同じリクエストを再送します。Studioが未受領の場合は、この操作で送信が行われることがあります。'), findsNothing);
                 expect(find.text('Studioの受領状況を照合'), findsNothing);
               }
@@ -542,7 +542,7 @@ void main() {
           final button = await _visibleHandoffAction(tester, '登録済み資料をStudioへ送信');
           await tester.tap(button);
           final notice = schedulingFailure
-              ? 'Studioへの送信は登録済みです。バックグラウンド処理の手配を確認してください。'
+              ? 'Studioへの送信は登録済みです。送信処理の手配を確認してください。'
               : 'Studioへの送信操作を実行できませんでした。';
           final deadline = DateTime.now().add(const Duration(seconds: 5));
           while (find.text(notice).evaluate().isEmpty) {
