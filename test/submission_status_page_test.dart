@@ -88,10 +88,10 @@ void main() {
             await tester.pump();
             await showSubmissionDetail(
               tester,
-              'Server ID: controlled/request1',
+              '受領済みサーバーID: controlled/request1',
             );
             // Then the rendered identity and typed projection match stored ACK.
-            expect(find.text('Server ID: controlled/request1'), findsOneWidget);
+            expect(find.text('受領済みサーバーID: controlled/request1'), findsOneWidget);
             final selected =
                 workspace.viewModel.selectedResource
                     as SubmissionStatusResourceRecord;
@@ -105,7 +105,7 @@ void main() {
             await workspace.viewModel.detailView.refresh();
             await tester.pump();
             // Then reads/rendering neither dispatch work nor duplicate intent.
-            expect(find.text('Server ID: controlled/request1'), findsOneWidget);
+            expect(find.text('受領済みサーバーID: controlled/request1'), findsOneWidget);
             expect(
               (workspace.viewModel.selectedResource
                       as SubmissionStatusResourceRecord)
@@ -193,7 +193,7 @@ void main() {
                       : SubmissionTransferOperationState.queued,
                 );
                 expect((await queue.find(request.id))!.acknowledgement, isNull);
-                expect(find.textContaining('Server ID:'), findsNothing);
+                expect(find.textContaining('受領済みサーバーID:'), findsNothing);
                 expect(
                   find.textContaining('controlled/request1'),
                   findsNothing,
@@ -277,7 +277,7 @@ void main() {
             expect(find.text('音声 原本.wav'), findsOneWidget);
             expect(
               find.text(
-                'Stored at: ${SubmissionFixture.time.toIso8601String()}',
+                '保存日時: ${SubmissionFixture.time.toIso8601String()}',
               ),
               findsNothing,
             );
@@ -327,17 +327,17 @@ void main() {
             expect(partial.status.files[1].receipt, isNull);
             expect(
               find.text(
-                'Stored at: ${SubmissionFixture.time.toIso8601String()}',
+                '保存日時: ${SubmissionFixture.time.toIso8601String()}',
               ),
               findsOneWidget,
             );
             expect(
-              find.text('Original ID: ${request.materials[0].original.id}'),
+              find.text('原本ID: ${request.materials[0].original.id}'),
               findsOneWidget,
             );
-            expect(find.text('Media type: audio/wav'), findsOneWidget);
+            expect(find.text('メディア形式: audio/wav'), findsOneWidget);
             expect(
-              find.text('Byte length: ${SubmissionFixture.audioBytes.length}'),
+              find.text('サイズ（バイト）: ${SubmissionFixture.audioBytes.length}'),
               findsOneWidget,
             );
             expect(
@@ -417,11 +417,11 @@ void main() {
             await tester.pump();
             await showSubmissionDetail(
               tester,
-              'Queued; background scheduling needs attention',
+              '送信待ちに登録済みです。バックグラウンド処理の手配を確認してください。',
             );
             expect(
               // Then one exact-request scheduling warning is distinct from server acknowledgement.
-              find.text('Queued; background scheduling needs attention'),
+              find.text('送信待ちに登録済みです。バックグラウンド処理の手配を確認してください。'),
               findsOneWidget,
             );
             expect(
@@ -434,7 +434,7 @@ void main() {
             await tester.pump();
             expect(
               // Then the unrelated warning is hidden.
-              find.text('Queued; background scheduling needs attention'),
+              find.text('送信待ちに登録済みです。バックグラウンド処理の手配を確認してください。'),
               findsNothing,
             );
             // Given the first request selected again.
@@ -447,7 +447,7 @@ void main() {
             // Then the previous notice is hidden while that exact action runs.
             expect(workspace.viewModel.actionRunning, isTrue);
             expect(
-              find.text('Queued; background scheduling needs attention'),
+              find.text('送信待ちに登録済みです。バックグラウンド処理の手配を確認してください。'),
               findsNothing,
             );
             final wakes = fixture.scheduler.calls;
@@ -461,11 +461,11 @@ void main() {
             await tester.pump();
             await showSubmissionDetail(
               tester,
-              'Queued; background scheduling needs attention',
+              '送信待ちに登録済みです。バックグラウンド処理の手配を確認してください。',
             );
             expect(
               // Then the current warning returns without transport execution.
-              find.text('Queued; background scheduling needs attention'),
+              find.text('送信待ちに登録済みです。バックグラウンド処理の手配を確認してください。'),
               findsOneWidget,
             );
             expect(fixture.transport.submits, 0);
@@ -532,12 +532,12 @@ void main() {
             await workspace.viewModel.select(first.id);
             workspace.displayModel.openDetail();
             await tester.pump();
-            await showSubmissionDetail(tester, 'Open item');
+            await showSubmissionDetail(tester, '項目を開く');
             final selected =
                 (workspace.viewModel.selectedResource
                         as SubmissionStatusResourceRecord)
                     .status;
-            final button = find.widgetWithText(TextButton, 'Open item');
+            final button = find.widgetWithText(TextButton, '項目を開く');
             await tester.ensureVisible(button);
             final captured = tester.widget<TextButton>(button).onPressed!;
             // When invoking the captured Open callback twice.
@@ -563,20 +563,20 @@ void main() {
             await replacement.viewModel.select(second.id);
             replacement.displayModel.openDetail();
             await tester.pump();
-            await showSubmissionDetail(tester, 'Open item');
+            await showSubmissionDetail(tester, '項目を開く');
             captured();
             gate.release();
             await Future<void>.delayed(const Duration(milliseconds: 10));
             await tester.pump();
             // Then neither stale navigation nor late fault/busy state reaches the replacement.
             expect(opened.length, 1);
-            expect(find.text('Could not open item.'), findsNothing);
-            expect(find.text('Opening…'), findsNothing);
+            expect(find.text('項目を開けませんでした。'), findsNothing);
+            expect(find.text('開いています…'), findsNothing);
             expect(fixture.scheduler.calls, wakes);
             expect(workspace.isDetached, isFalse);
             final unmounted = tester
                 .widget<TextButton>(
-                  find.widgetWithText(TextButton, 'Open item'),
+                  find.widgetWithText(TextButton, '項目を開く'),
                 )
                 .onPressed!;
             // When unmounting and invoking the new captured callback.

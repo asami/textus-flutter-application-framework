@@ -13,7 +13,7 @@ class SubmissionStatusPage extends StatefulWidget {
     this.openSubject,
     this.handoffRegisteredMaterial,
     this.reconcileRegisteredMaterial,
-    this.openSubjectLabel = 'Open item',
+    this.openSubjectLabel = '項目を開く',
     super.key,
   });
 
@@ -217,22 +217,22 @@ class _SubmissionStatusPageState extends State<SubmissionStatusPage> {
         record.status.registration?.failure?.code;
     final instruction = switch (reason) {
       'integrityMismatch' =>
-        'Original content did not match; retained for operator review',
+        '原本の内容が一致しません。原本は保持されています。担当者による確認が必要です。',
       'verificationUnavailable' =>
-        'Provider checksum unavailable; retained for operator review',
+        'プロバイダーでチェックサムを確認できません。原本は保持されています。担当者による確認が必要です。',
       'integrityUpgradeRequired' =>
-        'This earlier transfer needs an integrity upgrade; originals retained',
+        '以前の転送には整合性確認の更新が必要です。原本は保持されています。',
       null => null,
-      _ => 'TKL needs operator reconciliation. Originals and confirmed uploads are retained.',
+      _ => 'TKL側で担当者による照合が必要です。原本と確認済みのアップロードは保持されています。',
     };
     final mixedVerification = record.status.files
         .map((file) => file.lakeProgress?.verificationState).toSet().length > 1;
     String verificationLabel(TklOriginalVerificationState? state) => switch (state) {
-      null => 'Not recorded',
-      TklOriginalVerificationState.pending => 'Queued',
-      TklOriginalVerificationState.verifying => 'Running',
-      TklOriginalVerificationState.verified => 'Succeeded',
-      TklOriginalVerificationState.failed => 'Failed',
+      null => '未記録',
+      TklOriginalVerificationState.pending => '確認待ち',
+      TklOriginalVerificationState.verifying => '確認中',
+      TklOriginalVerificationState.verified => '確認済み',
+      TklOriginalVerificationState.failed => '確認失敗',
     };
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -242,32 +242,32 @@ class _SubmissionStatusPageState extends State<SubmissionStatusPage> {
             Text(
               progress.transferMethod ==
                       TklMaterialTransferMethod.googleDriveResumable
-                  ? 'Transfer route: Direct to provider'
-                  : 'Transfer route: Via TKL',
+                  ? '転送経路: 保存先へ直接'
+                  : '転送経路: TKL経由',
             ),
             if (progress.transferReason == 'providerDirectUploadUnsupported')
               const Text(
-                'The provider does not support direct upload; TKL performs the transfer.',
+                '保存先は直接アップロードに対応していないため、TKL経由で転送します。',
               ),
             if (progress.transferReason == 'operatorSelectedServerTransfer')
-              const Text('Server transfer was selected by the operator.'),
+              const Text('担当者の指定によりサーバー経由で転送します。'),
           ],
           if (record.status.tklProgress?.materialRef
               case final String reference)
-            SelectableText('TKL Material reference: $reference'),
+            SelectableText('TKL資料参照: $reference'),
           if (instruction != null) Text(instruction),
         ],
         if (record.status.acknowledgement != null)
-          Text('Server ID: ${record.status.acknowledgement!.serverId}'),
+          Text('受領済みサーバーID: ${record.status.acknowledgement!.serverId}'),
         if (record.status.studioHandoff?.failure != null)
           Text(record.status.studioHandoff!.failure!.message),
         if (canReconcile && pending)
           const Text(
-            'Studio handoff is queued. Resume background scheduling for the same saved request.',
+            'Studioへの送信は待機中です。同じ保存済みリクエストでバックグラウンド処理の手配を再開します。',
           ),
         if (canReconcile && !pending)
           const Text(
-            'Reconciliation resends the same request and can submit it if Studio has not previously received it.',
+            '照合では同じリクエストを再送します。Studioが未受領の場合は、この操作で送信が行われることがあります。',
           ),
         if (canSend || canReconcile)
           TextButton(
@@ -276,33 +276,33 @@ class _SubmissionStatusPageState extends State<SubmissionStatusPage> {
             ),
             child: Text(canReconcile
                 ? pending
-                    ? 'Resume queued Studio handoff'
-                    : 'Reconcile Studio receipt'
-                : 'Send registered material to Studio'),
+                    ? '待機中のStudio送信を再開'
+                    : 'Studioの受領状況を照合'
+                : '登録済み資料をStudioへ送信'),
           ),
         for (final file in record.status.files) ...[
           Text(configuration.fileLabel(file)),
           Text(configuration.operationStateLabel(file.state)),
           if (record.status.usesLakeDelivery && mixedVerification)
-            Text('Original integrity: ${verificationLabel(file.lakeProgress?.verificationState)}'),
+            Text('原本の整合性: ${verificationLabel(file.lakeProgress?.verificationState)}'),
           if (!record.status.usesLakeDelivery)
-            Text('Original ID: ${file.original.id}'),
-          Text('Media type: ${file.original.mediaType}'),
-          Text('Byte length: ${file.original.byteLength}'),
+            Text('原本ID: ${file.original.id}'),
+          Text('メディア形式: ${file.original.mediaType}'),
+          Text('サイズ（バイト）: ${file.original.byteLength}'),
           if (file.receipt != null)
             Text(
-              'Stored at: ${configuration.formatTime(file.receipt!.storedAt)}',
+              '保存日時: ${configuration.formatTime(file.receipt!.storedAt)}',
             ),
           if (file.directReceipt != null &&
               file.lakeProgress?.state != TklOriginalTransferState.uploaded)
-            const Text('Uploaded to provider; awaiting TKL confirmation.'),
+            const Text('保存先へのアップロードは完了しています。TKLの確認待ちです。'),
         ],
-        if (notice) const Text('Queued; background scheduling needs attention'),
+        if (notice) const Text('送信待ちに登録済みです。バックグラウンド処理の手配を確認してください。'),
         if (_schedulingFailedId == record.id)
-          const Text('Studio handoff queued; background scheduling needs attention.'),
+          const Text('Studioへの送信は登録済みです。バックグラウンド処理の手配を確認してください。'),
         if (_handoffFailedId == record.id)
-          const Text('Could not perform Studio handoff action.'),
-        if (_openFailed) const Text('Could not open item.'),
+          const Text('Studioへの送信操作を実行できませんでした。'),
+        if (_openFailed) const Text('項目を開けませんでした。'),
         if (widget.openSubject != null)
           Wrap(
             children: [
@@ -311,7 +311,7 @@ class _SubmissionStatusPageState extends State<SubmissionStatusPage> {
                 onPressed: busy
                     ? null
                     : () => _open(workspace, record),
-                child: Text(_opening ? 'Opening…' : widget.openSubjectLabel),
+                child: Text(_opening ? '開いています…' : widget.openSubjectLabel),
               ),
             ],
           ),

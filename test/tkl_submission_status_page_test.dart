@@ -117,19 +117,19 @@ void main() {
               final operations = record.value('operations');
               // Then five named stages count only recorded checkpoints and proof.
               expect(operations.split('\n').map((line) => line.split(':').first),
-                ['Preparation', 'Upload', 'Integrity verification', 'TKL registration', 'Studio receipt']);
+                ['準備', 'アップロード', '原本の整合性確認', 'TKL登録', 'Studio受領']);
               expect(operations, contains(scenario == 'preparing'
-                ? 'Preparation: Running (1/2)' : legacy
-                ? 'Preparation: ${scenario == 'legacy' ? 'Queued' : 'Outcome unknown'} (0/2)'
-                : 'Preparation: Succeeded (2/2)'));
+                ? '準備: Running (1/2)' : legacy
+                ? '準備: ${scenario == 'legacy' ? 'Queued' : 'Outcome unknown'} (0/2)'
+                : '準備: Succeeded (2/2)'));
               expect(operations, contains(scenario == 'preparing'
-                ? 'Upload: Running (0/2)' : 'Upload: Succeeded (2/2)'));
+                ? 'アップロード: Running (0/2)' : 'アップロード: Succeeded (2/2)'));
               expect(operations, contains(legacy || scenario == 'preparing'
-                ? 'Integrity verification: Not recorded' : failed
-                ? 'Integrity verification: Failed (1/2)' : scenario == 'uploaded'
-                ? 'Integrity verification: Running (0/2)'
-                : 'Integrity verification: Succeeded (2/2)'));
-              expect(operations, endsWith('Studio receipt: Not received'));
+                ? '原本の整合性確認: 未記録' : failed
+                ? '原本の整合性確認: Failed (1/2)' : scenario == 'uploaded'
+                ? '原本の整合性確認: Running (0/2)'
+                : '原本の整合性確認: Succeeded (2/2)'));
+              expect(operations, endsWith('Studio受領: 未受領'));
               expect(record.status.acknowledgement, isNull);
               expect(SubmissionStatusSummary.fromStatuses([record.status]).completedCount, 0);
               expect(record.values.values.join(), isNot(contains('secret.invalid')));
@@ -141,22 +141,22 @@ void main() {
               }
               // Given the selected compact or split detail.
               // When scrolling to the retained route and instructions.
-              await tester.scrollUntilVisible(find.text(scenario == 'preparing' ? 'Media type: image/jpeg' : 'Transfer route: Via TKL'), 250,
+              await tester.scrollUntilVisible(find.text(scenario == 'preparing' ? 'メディア形式: image/jpeg' : '転送経路: TKL経由'), 250,
                 scrollable: find.byType(Scrollable).last);
               await tester.pump();
               // Then actual registration alone exposes its reference and safe operator text.
-              expect(find.textContaining('TKL Material reference:'), registered ? findsOneWidget : findsNothing);
-              expect(find.textContaining('Server ID:'), findsNothing);
+              expect(find.textContaining('TKL資料参照:'), registered ? findsOneWidget : findsNothing);
+              expect(find.textContaining('受領済みサーバーID:'), findsNothing);
               final instruction = switch (scenario) {
-                'integrityMismatch' => 'Original content did not match; retained for operator review',
-                'verificationUnavailable' => 'Provider checksum unavailable; retained for operator review',
-                'integrityUpgradeRequired' => 'This earlier transfer needs an integrity upgrade; originals retained',
+                'integrityMismatch' => '原本の内容が一致しません。原本は保持されています。担当者による確認が必要です。',
+                'verificationUnavailable' => 'プロバイダーでチェックサムを確認できません。原本は保持されています。担当者による確認が必要です。',
+                'integrityUpgradeRequired' => '以前の転送には整合性確認の更新が必要です。原本は保持されています。',
                 _ => null,
               };
               if (instruction != null) expect(find.text(instruction), findsOneWidget);
               if (failed) {
-                expect(find.text('Original integrity: Succeeded'), findsOneWidget);
-                expect(find.text('Original integrity: Failed'), findsOneWidget);
+                expect(find.text('原本の整合性: 確認済み'), findsOneWidget);
+                expect(find.text('原本の整合性: 確認失敗'), findsOneWidget);
               }
               // Given unchanged queue intent.
               // When explicitly refreshing its observations.
@@ -254,28 +254,28 @@ void main() {
             workspace.displayModel.openDetail();
             await tester.pump();
             await tester.scrollUntilVisible(
-              find.text('TKL Material reference: $reference'),
+              find.text('TKL資料参照: $reference'),
               250,
               scrollable: find.byType(Scrollable).last,
             );
             await tester.pump();
             // Then only the confirmed Lake reference appears, without manufacturing server acceptance.
             expect(
-              find.text('TKL Material reference: $reference'),
+              find.text('TKL資料参照: $reference'),
               findsOneWidget,
             );
-            expect(find.textContaining('Server ID:'), findsNothing);
+            expect(find.textContaining('受領済みサーバーID:'), findsNothing);
             expect(
               find.text(
                 direct
-                    ? 'Transfer route: Direct to provider'
-                    : 'Transfer route: Via TKL',
+                    ? '転送経路: 保存先へ直接'
+                    : '転送経路: TKL経由',
               ),
               findsOneWidget,
             );
             expect(
               find.text(
-                'The provider does not support direct upload; TKL performs the transfer.',
+                '保存先は直接アップロードに対応していないため、TKL経由で転送します。',
               ),
               direct ? findsNothing : findsOneWidget,
             );
@@ -285,11 +285,11 @@ void main() {
             expect(record.value('storageDestination'), 'Library materials');
             expect(
               record.value('operations'),
-              contains('TKL registration: Succeeded'),
+              contains('TKL登録: Succeeded'),
             );
             expect(
               record.value('operations'),
-              contains('Studio receipt: Not received'),
+              contains('Studio受領: 未受領'),
             );
             expect(record.status.acknowledgement, isNull);
             expect(

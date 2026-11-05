@@ -181,35 +181,35 @@ void main() {
               expect(record.status.files.every((file) => file.receipt == null), isTrue);
               expect((await f.queue.find('book'))!.acknowledgement, isNull);
               expect(record.value('operations'), contains(state == 'registered'
-                ? 'Studio receipt: Not received' : state == 'pending'
-                ? 'Studio receipt: Queued' : state == 'sending'
-                ? 'Studio receipt: Running' : state == 'failed'
-                ? 'Studio receipt: Failed' : state == 'accepted'
-                ? 'Studio receipt:' : 'Studio receipt: Outcome unknown'));
+                ? 'Studio受領: 未受領' : state == 'pending'
+                ? 'Studio受領: Queued' : state == 'sending'
+                ? 'Studio受領: Running' : state == 'failed'
+                ? 'Studio受領: Failed' : state == 'accepted'
+                ? 'Studio受領:' : 'Studio受領: Outcome unknown'));
               if (state != 'registered') {
-                expect(record.value('transportDestination'), contains('TKL source:'));
-                expect(record.value('transportDestination'), contains('Studio handoff: Transport studio (studio)'));
+                expect(record.value('transportDestination'), contains('TKL転送元:'));
+                expect(record.value('transportDestination'), contains('Studioへの送信: Transport studio (studio)'));
               }
-              final label = state == 'registered' ? 'Send registered material to Studio'
-                : state == 'pending' ? 'Resume queued Studio handoff'
-                : ['unknown', 'failed', 'expired'].contains(state) ? 'Reconcile Studio receipt' : null;
+              final label = state == 'registered' ? '登録済み資料をStudioへ送信'
+                : state == 'pending' ? '待機中のStudio送信を再開'
+                : ['unknown', 'failed', 'expired'].contains(state) ? 'Studioの受領状況を照合' : null;
               if (label != null) {
                 await tester.scrollUntilVisible(find.text(label), 250,
                   scrollable: find.byType(Scrollable).last);
                 expect(find.text(label), findsOneWidget);
               } else {
-                expect(find.text('Send registered material to Studio'), findsNothing);
-                expect(find.text('Resume queued Studio handoff'), findsNothing);
-                expect(find.text('Reconcile Studio receipt'), findsNothing);
+                expect(find.text('登録済み資料をStudioへ送信'), findsNothing);
+                expect(find.text('待機中のStudio送信を再開'), findsNothing);
+                expect(find.text('Studioの受領状況を照合'), findsNothing);
               }
-              expect(find.textContaining('Stored at:'), findsNothing);
-              expect(find.textContaining('Server ID:'), state == 'accepted' ? findsOneWidget : findsNothing);
-              if (label == 'Reconcile Studio receipt') {
-                expect(find.textContaining('can submit it if Studio has not previously received it'), findsOneWidget);
+              expect(find.textContaining('保存日時:'), findsNothing);
+              expect(find.textContaining('受領済みサーバーID:'), state == 'accepted' ? findsOneWidget : findsNothing);
+              if (label == 'Studioの受領状況を照合') {
+                expect(find.textContaining('Studioが未受領の場合は、この操作で送信が行われることがあります。'), findsOneWidget);
               } else if (state == 'pending') {
-                expect(find.textContaining('Resume background scheduling for the same saved request'), findsOneWidget);
-                expect(find.textContaining('Reconciliation resends the same request'), findsNothing);
-                expect(find.text('Reconcile Studio receipt'), findsNothing);
+                expect(find.textContaining('同じ保存済みリクエストでバックグラウンド処理の手配を再開します。'), findsOneWidget);
+                expect(find.textContaining('照合では同じリクエストを再送します。Studioが未受領の場合は、この操作で送信が行われることがあります。'), findsNothing);
+                expect(find.text('Studioの受領状況を照合'), findsNothing);
               }
               expect(f.base.scheduler.calls, wakes);
               expect(f.transport.calls, calls);
@@ -241,7 +241,7 @@ void main() {
             await tester.pump();
             final saved = (await f.queue.findHandoffForSource('book'))!;
             final source = (await f.queue.find('book'))!;
-            final button = await _visibleHandoffAction(tester, 'Resume queued Studio handoff');
+            final button = await _visibleHandoffAction(tester, '待機中のStudio送信を再開');
             final wakes = f.base.scheduler.calls;
             // When real background processing records uncertainty before the stale button is tapped.
             f.transport.outcome = 'unknown';
@@ -273,10 +273,10 @@ void main() {
             expect(await f.queue.find('book'), source);
             expect((await f.queue.find('book'))!.acknowledgement, isNull);
             expect(f.base.storage.uploads + f.base.transport.submits, 0);
-            expect(find.text('Resume queued Studio handoff'), findsNothing);
-            expect(find.text('Reconcile Studio receipt'), findsOneWidget);
-            expect(find.textContaining('Reconciliation resends the same request'), findsOneWidget);
-            expect(find.textContaining('Server ID:'), findsNothing);
+            expect(find.text('待機中のStudio送信を再開'), findsNothing);
+            expect(find.text('Studioの受領状況を照合'), findsOneWidget);
+            expect(find.textContaining('照合では同じリクエストを再送します。Studioが未受領の場合は、この操作で送信が行われることがあります。'), findsOneWidget);
+            expect(find.textContaining('受領済みサーバーID:'), findsNothing);
             expect(tester.takeException(), isNull);
           } finally {
             await tester.pumpWidget(const SizedBox.shrink());
@@ -307,9 +307,9 @@ void main() {
             await f.select();
             await tester.pump();
             expect(f.base.scheduler.calls, wakes);
-            expect(find.textContaining('Reconciliation resends the same request'), findsNothing);
+            expect(find.textContaining('照合では同じリクエストを再送します。Studioが未受領の場合は、この操作で送信が行われることがあります。'), findsNothing);
             // When the actual pending resume action is tapped repeatedly before wake settles.
-            final button = await _visibleHandoffAction(tester, 'Resume queued Studio handoff');
+            final button = await _visibleHandoffAction(tester, '待機中のStudio送信を再開');
             await tester.tap(button);
             await tester.tap(button);
             await gate.entered.future.timeout(const Duration(seconds: 5));
@@ -358,7 +358,7 @@ void main() {
         await tester.pump();
         final original = f.workspace.viewModel.selectedResource;
         // When the operator taps the real action and its guarded refresh settles.
-        final button = await _visibleHandoffAction(tester, 'Send registered material to Studio');
+        final button = await _visibleHandoffAction(tester, '登録済み資料をStudioへ送信');
         await tester.tap(button);
         final deadline = DateTime.now().add(const Duration(seconds: 5));
         while ((f.workspace.viewModel.selectedResource as SubmissionStatusResourceRecord?)
@@ -375,8 +375,8 @@ void main() {
         expect(record.status.studioHandoff!.state, RegisteredMaterialHandoffState.pending);
         expect(record.status.acknowledgement, isNull);
         expect((await f.queue.find('book'))!.acknowledgement, isNull);
-        expect(find.textContaining('Server ID:'), findsNothing);
-        expect(find.text('Send registered material to Studio'), findsNothing);
+        expect(find.textContaining('受領済みサーバーID:'), findsNothing);
+        expect(find.text('登録済み資料をStudioへ送信'), findsNothing);
         expect(f.base.scheduler.calls, 1);
         expect(f.transport.calls, 0);
         expect(f.base.storage.uploads + f.base.transport.submits, 0);
@@ -405,7 +405,7 @@ void main() {
           workspace: f.workspace, handoffRegisteredMaterial: send)));
         await f.select();
         await tester.pump();
-        final button = await _visibleHandoffAction(tester, 'Send registered material to Studio');
+        final button = await _visibleHandoffAction(tester, '登録済み資料をStudioへ送信');
         // When repeated taps precede callback settlement and the route retires.
         await tester.tap(button);
         await tester.tap(button);
@@ -469,7 +469,7 @@ void main() {
           })));
         await f.select();
         await tester.pump();
-        final button = await _visibleHandoffAction(tester, 'Send registered material to Studio');
+        final button = await _visibleHandoffAction(tester, '登録済み資料をStudioへ送信');
         await tester.tap(button);
         await gate.entered.future.timeout(const Duration(seconds: 5));
         // When the same page state receives another workspace before settlement.
@@ -479,7 +479,7 @@ void main() {
         await tester.pump();
         // Then neither the raw error nor a stale failure notice reaches replacement UI.
         expect(find.textContaining('private callback detail'), findsNothing);
-        expect(find.text('Could not perform Studio handoff action.'), findsNothing);
+        expect(find.text('Studioへの送信操作を実行できませんでした。'), findsNothing);
         expect(f.base.scheduler.calls, 0);
         expect(tester.takeException(), isNull);
       } finally {
@@ -509,8 +509,8 @@ void main() {
         await tester.pump();
         final wakes = f.base.scheduler.calls;
         // When the operator explicitly taps the action adjacent to the warning.
-        final button = await _visibleHandoffAction(tester, 'Reconcile Studio receipt');
-        expect(find.textContaining('Reconciliation resends the same request'), findsOneWidget);
+        final button = await _visibleHandoffAction(tester, 'Studioの受領状況を照合');
+        expect(find.textContaining('照合では同じリクエストを再送します。Studioが未受領の場合は、この操作で送信が行われることがあります。'), findsOneWidget);
         await tester.tap(button);
         await done.future.timeout(const Duration(seconds: 5));
         // Then only the same source packet is replayed and no transport is invoked by UI.
@@ -539,11 +539,11 @@ void main() {
           await f.select();
           await tester.pump();
           // When the real explicit action settles and the current page refreshes once.
-          final button = await _visibleHandoffAction(tester, 'Send registered material to Studio');
+          final button = await _visibleHandoffAction(tester, '登録済み資料をStudioへ送信');
           await tester.tap(button);
           final notice = schedulingFailure
-              ? 'Studio handoff queued; background scheduling needs attention.'
-              : 'Could not perform Studio handoff action.';
+              ? 'Studioへの送信は登録済みです。バックグラウンド処理の手配を確認してください。'
+              : 'Studioへの送信操作を実行できませんでした。';
           final deadline = DateTime.now().add(const Duration(seconds: 5));
           while (find.text(notice).evaluate().isEmpty) {
             if (DateTime.now().isAfter(deadline)) throw StateError('Expected safe action notice.');
@@ -553,7 +553,7 @@ void main() {
           // Then safe current UI separates queued intent from acknowledgement.
           expect(find.text(notice), findsOneWidget);
           expect(find.textContaining('private domain error'), findsNothing);
-          expect(find.textContaining('Server ID:'), findsNothing);
+          expect(find.textContaining('受領済みサーバーID:'), findsNothing);
           expect(f.base.scheduler.calls, schedulingFailure ? 1 : 0);
           expect((await f.handoffs.list()).length, schedulingFailure ? 1 : 0);
           expect(f.transport.calls, 0);
