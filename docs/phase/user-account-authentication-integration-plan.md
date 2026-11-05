@@ -33,3 +33,33 @@ not acceptance or additional review gates; report gaps and revised forecasts.
 See the [milestone schedule](../../../../Project2026/nict-editing-studio/docs/milestone/2026-11-10-nict-demo.md#intermediate-delivery-targets-jst).
 Verify common behavior and actual consumer routes with proportionate tests and
 integrated review under normal owner validation/release rules.
+
+## Runtime-mode facade allocation — 2026-11-02
+
+Consume the [common profile presentation contract](../spec/user-account-login-facade.md#runtime-profiles-and-presentation--2026-11-02).
+
+- [ ] TFAF-UA01: align CNCF/User Account/Core mode semantics; no second profile
+  parser, authentication provider or authorization policy in widgets.
+- [ ] TFAF-UA02 / MODE-01/04/05: native common account/environment display and
+  ordinary demo participant login; preserve owner/draft/queue boundaries.
+- [ ] TFAF-UA03: Web and Fold presentation reuse the same state; layout or
+  collection/editing switches cannot change identity, mode or permissions.
+
+Retain the existing delivery order and integrated review. The November demo
+uses the real participant profile, not a development login shortcut.
+
+## External providers and provider-managed Passkey — 2026-11-05
+
+Status: PLANNED; separate extension, not a November 10 demo gate.
+
+Implement shared provider selection and login lifecycle UI, locale-based recommendations and Other login methods; consume Core state without implementing token verification or storing provider secrets.
+
+Follow the [shared delivery decision](../notes/external-provider-login-and-passkey.md).
+Google is first; Microsoft/GitHub/LINE follow without blocking its acceptance.
+Existing active work, accepted phases and direct Textus WebAuthn plans remain intact.
+
+- [ ] TFAF-FED-01: Agree the begin/callback/completion/session and provider-capability contracts with the other two owners; preserve existing identity/authorization boundaries.
+- [ ] TFAF-FED-02: Deliver the owner responsibility above on the connected Google Web/native route, then qualify other enabled providers separately.
+- [ ] TFAF-FED-03: Accept provider-managed Passkey on supported real account/device/browser combinations; distinguish actual ceremony from reused sessions and unverified assurance. No Textus Passkey enrollment is required.
+- [ ] TFAF-FED-04: Verify Japanese/default recommendations and Other access to all remaining enabled providers with Framework/Core; locale does not restrict authentication.
+- [ ] TFAF-FED-05: Record connected success, cancellation, rejection/replay, account isolation, logout and redaction evidence; normal owner tests/review/release apply.
