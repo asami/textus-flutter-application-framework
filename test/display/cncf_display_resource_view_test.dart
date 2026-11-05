@@ -362,7 +362,7 @@ void main() {
       // When common toolbar Reload fails, then existing diagnostics and receipt coexist.
       await tester.tap(find.byKey(reloadKey));
       await tester.pumpAndSettle();
-      expect(find.text('Could not load resource'), findsOneWidget);
+      expect(find.text('詳細を読み込めませんでした。'), findsOneWidget);
       expect(find.text('Committed updated, revision 2'), findsOneWidget);
       expect(find.byKey(reloadKey), findsOneWidget);
       expect(fixture.controller.receipt!.revision, '2');

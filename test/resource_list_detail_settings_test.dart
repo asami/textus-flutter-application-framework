@@ -22,7 +22,7 @@ void main() {
     expect(find.byKey(const Key('resource-restore-split')), findsOneWidget);
     await tester.tap(find.byKey(const Key('resource-restore-split')));
     await tester.pumpAndSettle();
-    expect(find.text('Select a resource'), findsOneWidget);
+    expect(find.text('項目を選択してください'), findsOneWidget);
     session.view.setValue(
       CommonSettings.panePreference.id,
       SettingsPanePreference.preferSinglePane,

@@ -327,7 +327,7 @@ class _ResourceListDetailState extends State<ResourceListDetail> {
       ResourceListDetailPresentation.split when canFocus => [
         IconButton(
           key: const Key('resource-detail-focus'),
-          tooltip: 'Show detail full screen',
+          tooltip: '詳細を全画面で表示',
           icon: const Icon(Icons.open_in_full),
           onPressed: _displayModel.focusDetail,
         ),
@@ -336,7 +336,7 @@ class _ResourceListDetailState extends State<ResourceListDetail> {
       ResourceListDetailPresentation.compactList when splitCapable => [
         IconButton(
           key: const Key('resource-restore-split'),
-          tooltip: 'Show list and detail',
+          tooltip: '一覧と詳細を表示',
           icon: const Icon(Icons.close_fullscreen),
           onPressed: _displayModel.restoreSplit,
         ),
@@ -344,7 +344,7 @@ class _ResourceListDetailState extends State<ResourceListDetail> {
       ResourceListDetailPresentation.compactDetail when splitCapable => [
         IconButton(
           key: const Key('resource-restore-split'),
-          tooltip: 'Show list and detail',
+          tooltip: '一覧と詳細を表示',
           icon: const Icon(Icons.close_fullscreen),
           onPressed: _displayModel.restoreSplit,
         ),
@@ -503,7 +503,7 @@ class _ResourceListDetailState extends State<ResourceListDetail> {
       );
 
   Widget _detailOrPlaceholder() => widget.viewModel.selectedId == null
-      ? const Center(child: Text('Select a resource'))
+      ? const Center(child: Text('項目を選択してください'))
       : _ResourceDetail(
           configuration: widget.configuration,
           viewModel: widget.viewModel,
@@ -614,14 +614,14 @@ class _ResourceList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (viewModel.listFailed) {
-      return const Center(child: Text('Could not load resources'));
+      return const Center(child: Text('一覧を読み込めませんでした。'));
     }
     if (viewModel.listLoading || viewModel.resources == null) {
       return const Center(child: CircularProgressIndicator());
     }
     final resources = viewModel.resources!;
     if (resources.isEmpty) {
-      return const Center(child: Text('No resources'));
+      return const Center(child: Text('項目がありません'));
     }
     return ListView.builder(
       key: PageStorageKey<ResourceViewModel>(viewModel),
@@ -671,13 +671,13 @@ class _ResourceDetail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (viewModel.detailFailed) {
-      return const Center(child: Text('Could not load resource'));
+      return const Center(child: Text('詳細を読み込めませんでした。'));
     }
     if (viewModel.detailLoading) {
       return const Center(child: CircularProgressIndicator());
     }
     final record = viewModel.selectedResource;
-    if (record == null) return const Center(child: Text('Resource not found'));
+    if (record == null) return const Center(child: Text('項目が見つかりません'));
     return ListView(
       children: [
         for (final field in configuration.detailFields)
@@ -686,7 +686,7 @@ class _ResourceDetail extends StatelessWidget {
             subtitle: Text(record.value(field.key)),
           ),
         if (viewModel.actionFailed)
-          const ListTile(title: Text('Could not update resource')),
+          const ListTile(title: Text('項目を更新できませんでした。')),
         for (final action in _visibleActions())
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),

@@ -124,14 +124,14 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Select a resource'), findsOneWidget);
+    expect(find.text('項目を選択してください'), findsOneWidget);
     // When the user selects that Resource.
     await tester.tap(find.text('First resource'));
     await tester.pumpAndSettle();
 
     // Then detail replaces the pane placeholder without navigation.
     expect(find.text('Visible from configuration'), findsOneWidget);
-    expect(find.text('Select a resource'), findsNothing);
+    expect(find.text('項目を選択してください'), findsNothing);
   });
 
   testWidgets('detail fields change through configuration alone', (
@@ -185,7 +185,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Then the user receives a safe message without the internal detail.
-    expect(find.text('Could not load resources'), findsOneWidget);
+    expect(find.text('一覧を読み込めませんでした。'), findsOneWidget);
     expect(find.textContaining('internal list diagnostic'), findsNothing);
   });
 
@@ -208,7 +208,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Then the detail error does not reveal the internal diagnostic.
-    expect(find.text('Could not load resource'), findsOneWidget);
+    expect(find.text('詳細を読み込めませんでした。'), findsOneWidget);
     expect(find.textContaining('internal detail diagnostic'), findsNothing);
   });
 

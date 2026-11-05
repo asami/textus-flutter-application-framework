@@ -26,7 +26,7 @@ void main() {
       expect(find.textContaining('Supplement'), findsNothing);
       if (width == 1000) {
         // Then expanded default detail still begins with its selection prompt.
-        expect(find.text('Select a resource'), findsOneWidget);
+        expect(find.text('項目を選択してください'), findsOneWidget);
       }
 
       // When the user selects a real public list tile.
@@ -187,7 +187,7 @@ void main() {
         await tester.pumpAndSettle();
 
         // Then the existing safe diagnostic replaces all supplemental stale data.
-        expect(find.text(missing ? 'Resource not found' : 'Could not load resource'),
+        expect(find.text(missing ? '項目が見つかりません' : '詳細を読み込めませんでした。'),
             findsOneWidget);
         expect(find.textContaining('private read'), findsNothing);
         expect(find.textContaining('Supplement'), findsNothing);
@@ -267,7 +267,7 @@ void main() {
       await gate.settled.future;
       await tester.pumpAndSettle();
       // Then empty presentation keeps the action reachable.
-      expect(find.text('No resources'), findsOneWidget);
+      expect(find.text('項目がありません'), findsOneWidget);
       expect(find.byTooltip('Reload').hitTestable(), findsOneWidget);
       expect(tester.widget<IconButton>(find.byWidgetPredicate(
           (widget) => widget is IconButton && widget.tooltip == 'Unavailable')).onPressed,
@@ -278,7 +278,7 @@ void main() {
       await session.model.load();
       await tester.pumpAndSettle();
       // Then safe failure still admits an explicit action without invoking it.
-      expect(find.text('Could not load resources'), findsOneWidget);
+      expect(find.text('一覧を読み込めませんでした。'), findsOneWidget);
       expect(find.textContaining('private list'), findsNothing);
       expect(find.byTooltip('Reload').hitTestable(), findsOneWidget);
       expect(tester.widget<IconButton>(find.byWidgetPredicate(

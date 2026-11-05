@@ -271,8 +271,8 @@ void main() {
 
         // Then empty and failed results remain observably distinct and safe.
         expect(model.listFailed, failure);
-        expect(find.text('Could not load resources'), failure ? findsOneWidget : findsNothing);
-        expect(find.text('No resources'), failure ? findsNothing : findsOneWidget);
+        expect(find.text('一覧を読み込めませんでした。'), failure ? findsOneWidget : findsNothing);
+        expect(find.text('項目がありません'), failure ? findsNothing : findsOneWidget);
         expect(find.textContaining('private source failure'), findsNothing);
         expect(model.resources, failure ? isNull : isEmpty);
         expect(session.source.reads, 1);
