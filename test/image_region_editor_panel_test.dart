@@ -57,13 +57,13 @@ void main() {
     // When the panel builds and idle frames settle.
     await tester.pumpAndSettle();
     // Then the primary flow is visible while provider work and diagnostics stay inactive.
-    expect(find.text('Load source image'), findsOneWidget);
-    expect(find.text('Quotation'), findsOneWidget);
-    expect(find.text('Comment'), findsOneWidget);
-    expect(find.text('Save passage'), findsOneWidget);
-    expect(find.text('Raw recognition and provider details'), findsOneWidget);
-    expect(find.text('Check recognition availability'), findsNothing);
-    expect(find.text('Recognize with local AI supplement'), findsNothing);
+    expect(find.text('原画像を開く'), findsOneWidget);
+    expect(find.text('引用文'), findsOneWidget);
+    expect(find.text('コメント'), findsOneWidget);
+    expect(find.text('引用・コメントを保存'), findsOneWidget);
+    expect(find.text('認識結果・処理の詳細'), findsOneWidget);
+    expect(find.text('文字認識の利用可否を確認'), findsNothing);
+    expect(find.text('端末内AIで補完して読み取る'), findsNothing);
     expect(h.store.reads, 0);
     expect(h.ocr.probes + h.ai.probes + h.audio.probes + h.audio.starts, 0);
     expect(h.controller.workspace.regions, isEmpty);
@@ -88,7 +88,7 @@ void main() {
     await press(tester, 'preview');
     await press(tester, 'recognize');
     expect(h.controller.quotationText, '');
-    expect(find.text('Use OCR text'), findsOneWidget);
+    expect(find.text('OCRの文字を引用文に使う'), findsOneWidget);
     await press(tester, 'use-ocr');
     await tester.ensureVisible(key('source-check'));
     await tester.tap(key('source-check'));
@@ -101,7 +101,7 @@ void main() {
     expect(saves.single.workspace.regions.single.comments.single.text, ' separate note ');
     expect(changes, isNotEmpty);
     expect(() => saves.single.audioReviews.clear(), throwsUnsupportedError);
-    expect(find.text('Save completed'), findsOneWidget);
+    expect(find.text('保存しました'), findsOneWidget);
     expect(h.ai.inputs, isEmpty);
     expect(h.ocr.preparations + h.audio.starts, 0);
   });
@@ -125,7 +125,7 @@ void main() {
     expect(saved!.workspace.regions.single.quotations.single.origin, RegionTextOrigin.manual);
     expect(saved!.workspace.regions.single.comments.single.text, 'manual comment');
     expect(h.ocr.inputs, isEmpty);
-    expect(find.text('No executed OCR text. You can enter the quotation manually.'), findsOneWidget);
+    expect(find.text('読み取れた文字がありません。引用文を入力することもできます。'), findsOneWidget);
   });
 
   testWidgets('P4 unconfirmed dirty quote gives actionable save error without partial domain save', (tester) async {
@@ -136,13 +136,13 @@ void main() {
     await tester.ensureVisible(key('quotation'));
     await tester.enterText(key('quotation'), 'unchecked');
     await tester.enterText(key('comment'), 'independent comment');
-    // When Save passage is explicitly invoked before the human source check.
+    // When 引用・コメントを保存 is explicitly invoked before the human source check.
     await press(tester, 'save');
     // Then no text history or domain save is partially adopted and the reason is visible.
     expect(saves, 0);
     expect(h.controller.currentEntry!.quotations, isEmpty);
     expect(h.controller.currentEntry!.comments, isEmpty);
-    expect(find.textContaining('Check each dirty quotation against its source'), findsOneWidget);
+    expect(find.text('操作を完了できませんでした。範囲を確定し、引用文を原文と照合してから再度お試しください。処理の詳細も確認できます。'), findsOneWidget);
     expect(h.controller.quotationText, 'unchecked');
     expect(h.controller.commentText, 'independent comment');
   });
@@ -194,7 +194,7 @@ void main() {
     });
     await tester.pump();
     // When manual text is edited while OCR waits and its actual completion later fails.
-    expect(find.text('Area operation in progress'), findsOneWidget);
+    expect(find.text('選択範囲を処理しています'), findsOneWidget);
     await tester.ensureVisible(key('quotation'));
     await tester.enterText(key('quotation'), 'manual while OCR waits');
     h.ocr.failure = StateError('controlled provider failure');
@@ -203,12 +203,15 @@ void main() {
     await tester.pumpAndSettle();
     expect(h.controller.quotationText, 'manual while OCR waits');
     expect(h.ai.inputs, isEmpty);
+    expect(h.controller.error, isNull);
+    expect(find.text('読み取れた文字がありません。引用文を入力することもできます。'), findsOneWidget);
+    expect(find.textContaining('controlled provider failure'), findsNothing);
     await tester.ensureVisible(key('details'));
     await tester.tap(key('details'));
     await tester.pumpAndSettle();
     // Then raw provider failure is inspectable and AI remains an explicit secondary action.
     expect(find.textContaining('controlled provider failure'), findsOneWidget);
-    expect(find.text('Recognize with local AI supplement'), findsNothing);
+    expect(find.text('端末内AIで補完して読み取る'), findsNothing);
     expect(h.ocr.preparations + h.ai.preparations, 0);
     expect(h.controller.busy, isFalse);
   });
@@ -300,20 +303,20 @@ void main() {
     // Given a confirmed image target in a narrow, doubled-text-scale viewport.
     await confirm(tester);
     await tester.pumpWidget(panel(width: 280, textScale: 2, onSave: (_) async {}));
-    // When primary fields and the Save passage route are laid out and scrolled.
+    // When primary fields and the 引用・コメントを保存 route are laid out and scrolled.
     await tester.pumpAndSettle();
     await tester.ensureVisible(key('save'));
     await tester.pumpAndSettle();
     // Then all primary controls remain in the scroll route without a Flutter overflow exception.
     expect(tester.takeException(), isNull);
-    expect(find.text('Save passage'), findsOneWidget);
+    expect(find.text('引用・コメントを保存'), findsOneWidget);
     expect(find.byType(ImageRegionSelector), findsOneWidget);
     expect(h.ocr.inputs, isEmpty);
     expect(h.audio.starts, 0);
   });
 
   for (final exact in ['  saved spoken 日本語\n ', '']) {
-    testWidgets('P11 Save passage retains dirty common transcript ${exact.isEmpty ? "clear" : "edit"} without Copy', (tester) async {
+    testWidgets('P11 引用・コメントを保存 retains dirty common transcript ${exact.isEmpty ? "clear" : "edit"} without Copy', (tester) async {
       // Given independent saved region text and a linked common raw transcription.
       await confirm(tester);
       h.controller.setQuotationText('saved source');
@@ -332,7 +335,7 @@ void main() {
       final saves = <ImageRegionEditorChange>[];
       final changes = <ImageRegionEditorChange>[];
       await tester.pumpWidget(panel(onChanged: changes.add, onSave: (value) async { saves.add(value); }));
-      // When the common transcript field is edited and Save passage is physically tapped.
+      // When the common transcript field is edited and 引用・コメントを保存 is physically tapped.
       final transcript = find.byKey(const ValueKey('transcript-review-text'));
       await tester.ensureVisible(transcript);
       await tester.pumpAndSettle();
@@ -385,7 +388,7 @@ void main() {
     expect(h.controller.audioReviews, same(reviews));
     expect(child.review, same(originalReview));
     expect(child.hasUnsavedText, isTrue);
-    expect(find.textContaining('Check each dirty quotation against its source'), findsOneWidget);
+    expect(find.text('操作を完了できませんでした。範囲を確定し、引用文を原文と照合してから再度お試しください。処理の詳細も確認できます。'), findsOneWidget);
     await press(tester, 'source-check');
     await press(tester, 'save');
     // Then the successful retry saves one combined adoption without copying transcript into text.
@@ -687,7 +690,7 @@ void main() {
     expect(audioReviews, isEmpty);
     expect(h.controller.audioController, isNull);
     expect(h.controller.audioTarget, isNull);
-    // When the user enters manual fields, explicitly checks the source and physically taps Save passage.
+    // When the user enters manual fields, explicitly checks the source and physically taps 引用・コメントを保存.
     await tester.ensureVisible(region('quotation'));
     await tester.pumpAndSettle();
     await tester.enterText(region('quotation'), '  manual 原文\n');
@@ -709,7 +712,7 @@ void main() {
     expect(h.controller.ownsPendingAudio, isFalse);
     expect(h.audioFacade.pendingOriginal, same(pending));
     expect(h.store.saves, savesBefore);
-    expect(find.text('Save completed'), findsOneWidget);
+    expect(find.text('保存しました'), findsOneWidget);
     // When the separate original common controls explicitly retry after storage recovers.
     h.store.audioSaveError = null;
     await pressAudio('retry-save', () => !generic.busy);

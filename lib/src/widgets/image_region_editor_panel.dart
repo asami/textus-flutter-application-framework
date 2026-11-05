@@ -28,6 +28,27 @@ class ImageRegionEditorPanel extends StatefulWidget {
   State<ImageRegionEditorPanel> createState() => _ImageRegionEditorPanelState();
 }
 
+String _originLabel(RegionTextOrigin origin) => switch (origin) {
+  RegionTextOrigin.manual => '手入力',
+  RegionTextOrigin.ocr => 'OCR',
+  RegionTextOrigin.ai => 'AI候補',
+  RegionTextOrigin.transcript => '文字起こし',
+};
+
+String _providerStateLabel(RecognitionProviderState state) => switch (state) {
+  RecognitionProviderState.available => '利用可能',
+  RecognitionProviderState.unavailable => '利用不可',
+  RecognitionProviderState.downloadable => 'ダウンロード可能',
+  RecognitionProviderState.preparing => '準備中',
+};
+
+String _runStatusLabel(RecognitionRunStatus status) => switch (status) {
+  RecognitionRunStatus.completed => '完了',
+  RecognitionRunStatus.partial => '一部完了',
+  RecognitionRunStatus.failed => '失敗',
+  RecognitionRunStatus.unavailable => '利用不可',
+};
+
 class _ImageRegionEditorPanelState extends State<ImageRegionEditorPanel> {
   late final TextEditingController _quotation;
   late final TextEditingController _comment;
@@ -109,7 +130,7 @@ class _ImageRegionEditorPanelState extends State<ImageRegionEditorPanel> {
       if (!_allows(c, owner, target)) return;
       setState(() { _saving = true; _saveResult = null; _error = null; });
       await callback(value);
-      if (_owns(c, owner)) setState(() { _saveResult = 'Save completed'; });
+      if (_owns(c, owner)) setState(() { _saveResult = '保存しました'; });
     } catch (error) {
       if (_owns(c, owner)) setState(() { _error = error; });
     } finally {
@@ -160,10 +181,10 @@ class _ImageRegionEditorPanelState extends State<ImageRegionEditorPanel> {
       catch (error) { if (_owns(c, owner)) setState(() { _error = error; }); }
     }
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text('Select a passage', style: Theme.of(context).textTheme.titleLarge),
+      Text('引用箇所を選ぶ', style: Theme.of(context).textTheme.titleLarge),
       Wrap(spacing: 8, runSpacing: 4, children: [
-        button('load', frame == null ? 'Load source image' : 'Reload source image', c.loadSource, enabled: !c.busy),
-        button('new', 'New area', c.startNewRegion, enabled: !c.selectionLocked),
+        button('load', frame == null ? '原画像を開く' : '原画像を再読み込み', c.loadSource, enabled: !c.busy),
+        button('new', '新しい範囲', c.startNewRegion, enabled: !c.selectionLocked),
       ]),
       if (frame != null) ImageRegionSelector(key: ObjectKey(c), frame: frame,
         selection: c.selection, enabled: allowed && !c.selectionLocked,
@@ -171,45 +192,45 @@ class _ImageRegionEditorPanelState extends State<ImageRegionEditorPanel> {
           if (_allows(c, owner, target)) c.setSelection(geometry);
         }),
       Wrap(spacing: 8, runSpacing: 4, children: [
-        button('confirm', 'Confirm selected area', () { c.confirmSelection(); },
+        button('confirm', '選択範囲を確定', () { c.confirmSelection(); },
           enabled: frame != null && c.selection != null && !c.selectionLocked),
-        button('cancel-selection', 'Cancel area change', c.cancelSelection, enabled: !c.selectionLocked),
-        button('preview', 'Preview selected area', c.previewSelection, enabled: confirmed && !c.busy),
+        button('cancel-selection', '範囲の変更を取り消す', c.cancelSelection, enabled: !c.selectionLocked),
+        button('preview', '選択範囲を確認', c.previewSelection, enabled: confirmed && !c.busy),
       ]),
       if (c.previewBytes != null) SizedBox(height: 160, child: CaptureImagePreview(
         key: ValueKey(c.derivation!.input.id), materialId: c.derivation!.input.id,
         sourceIdentity: c.derivation!, readBytes: () => c.previewBytes,
-        semanticLabel: 'Exact saved selected area preview',
-        errorBuilder: (_, error, _) => Text('Crop display failed: $error'),
+        semanticLabel: '保存済みの選択範囲',
+        errorBuilder: (_, error, _) => const Text('選択範囲を表示できませんでした。'),
       )),
       Wrap(spacing: 8, runSpacing: 4, children: [
-        button('recognize', 'Recognize selected area', c.recognize, enabled: confirmed && !c.busy),
-        if (c.busy) button('cancel-result', 'Ignore pending result', c.cancelPendingResult),
+        button('recognize', '選択範囲を文字起こし', c.recognize, enabled: confirmed && !c.busy),
+        if (c.busy) button('cancel-result', '処理結果を採用せず中止', c.cancelPendingResult),
       ]),
-      if (c.busy) const Text('Area operation in progress'),
+      if (c.busy) const Text('選択範囲を処理しています'),
       if (ocr != null) ...[
         Text(ocr.result.text!, maxLines: 3, overflow: TextOverflow.ellipsis),
-        Align(alignment: Alignment.centerLeft, child: button('use-ocr', 'Use OCR text',
+        Align(alignment: Alignment.centerLeft, child: button('use-ocr', 'OCRの文字を引用文に使う',
           () => c.useOcrText(latest!.id))),
-      ] else if (latest != null) const Text('No executed OCR text. You can enter the quotation manually.'),
+      ] else if (latest != null) const Text('読み取れた文字がありません。引用文を入力することもできます。'),
       TextField(key: const ValueKey('image-region-quotation'), controller: _quotation,
         enabled: allowed && c.selectedSnapshot != null, minLines: 3, maxLines: null,
-        decoration: const InputDecoration(labelText: 'Quotation',
-          helperText: 'Keep verbatim wording and check it against the source.'),
+        decoration: const InputDecoration(labelText: '引用文',
+          helperText: '原文の表記を保ち、画像と照合してください。'),
         onChanged: (text) {
           if (_allows(c, owner, target)) { c.setQuotationText(text); }
           else if (_owns(c, owner)) { _syncText(); }
         }),
       CheckboxListTile(key: const ValueKey('image-region-source-check'),
-        contentPadding: EdgeInsets.zero, title: const Text('I checked the quotation against the source'),
+        contentPadding: EdgeInsets.zero, title: const Text('引用文を原文と照合した'),
         value: c.sourceConfirmed, onChanged: allowed && c.selectedSnapshot != null
           ? (value) { if (_allows(c, owner, target)) c.setSourceConfirmed(value ?? false); } : null),
       if (c.audioFacade != null) ...[
-        Align(alignment: Alignment.centerLeft, child: button('begin-audio', 'Add spoken comment',
+        Align(alignment: Alignment.centerLeft, child: button('begin-audio', '音声コメントを追加',
           c.beginAudioComment, enabled: confirmed && !c.selectionLocked)),
         if (entry != null) Wrap(spacing: 8, children: [
           for (final link in entry.audioLinks.where((l) => l.regionRevision == c.selectedRevision))
-            button('select-audio-${link.audioMaterialId}', 'Open audio ${link.audioMaterialId}',
+            button('select-audio-${link.audioMaterialId}', '音声を開く ${link.audioMaterialId}',
               () => c.selectAudio(link.audioMaterialId), enabled: !c.selectionLocked),
         ]),
         if (child != null && audioTarget != null) ...[
@@ -217,14 +238,14 @@ class _ImageRegionEditorPanelState extends State<ImageRegionEditorPanel> {
             interactionAllowed: audioAllowed, onReviewChanged: attach),
           TranscriptReviewPanel(key: ValueKey(child), controller: child,
             interactionAllowed: audioAllowed, onReviewChanged: attach),
-          Align(alignment: Alignment.centerLeft, child: button('use-transcript', 'Use transcript as comment',
+          Align(alignment: Alignment.centerLeft, child: button('use-transcript', '文字起こしをコメントに使う',
             c.useTranscriptAsComment, enabled: child.review != null)),
         ],
       ],
       TextField(key: const ValueKey('image-region-comment'), controller: _comment,
         enabled: allowed && c.selectedSnapshot != null, minLines: 3, maxLines: null,
-        decoration: const InputDecoration(labelText: 'Comment',
-          helperText: 'Your explanation or spoken comment, separate from the quotation.'),
+        decoration: const InputDecoration(labelText: 'コメント',
+          helperText: '引用文とは分けて、自分の説明や音声コメントを記入します。'),
         onChanged: (text) {
           if (_allows(c, owner, target)) { c.setCommentText(text); }
           else if (_owns(c, owner)) { _syncText(); }
@@ -232,42 +253,43 @@ class _ImageRegionEditorPanelState extends State<ImageRegionEditorPanel> {
       Align(alignment: Alignment.centerLeft, child: FilledButton(
         key: const ValueKey('image-region-save'),
         onPressed: allowed && widget.onSave != null ? () => unawaited(_save(c, owner, target)) : null,
-        child: Text(_saving ? 'Saving passage…' : 'Save passage'))),
+        child: Text(_saving ? '引用・コメントを保存しています…' : '引用・コメントを保存'))),
       if (_saveResult != null) Text(_saveResult!),
-      if (_error != null || c.error != null) Text('Passage error: ${_error ?? c.error}'),
-      ExpansionTile(key: const ValueKey('image-region-history'), title: const Text('Areas and revision history'), children: [
+      if (_error != null || c.error != null) Text('操作を完了できませんでした。範囲を確定し、引用文を原文と照合してから再度お試しください。処理の詳細も確認できます。'),
+      ExpansionTile(key: const ValueKey('image-region-history'), title: const Text('範囲と変更履歴'), children: [
         for (final region in c.workspace.regions.where((e) => e.snapshots.first.source == c.source))
           Wrap(spacing: 8, children: [
             for (final snapshot in region.snapshots)
               button('select-${region.regionId}-${snapshot.revision}',
-                '${region.regionId}, revision ${snapshot.revision}',
+                '${region.regionId}、変更履歴 ${snapshot.revision}',
                 () => c.selectRegion(region.regionId, revision: snapshot.revision), enabled: !c.selectionLocked),
           ]),
         if (entry != null) ...[
           for (final text in entry.quotations) ListTile(title: Text(text.text),
-            subtitle: Text('Quotation revision ${text.regionRevision}, ${text.origin.name}')),
+            subtitle: Text('引用文の変更履歴 ${text.regionRevision}、${_originLabel(text.origin)}')),
           for (final text in entry.comments) ListTile(title: Text(text.text),
-            subtitle: Text('Comment revision ${text.regionRevision}, ${text.origin.name}')),
+            subtitle: Text('コメントの変更履歴 ${text.regionRevision}、${_originLabel(text.origin)}')),
         ],
       ]),
-      ExpansionTile(key: const ValueKey('image-region-details'), title: const Text('Raw recognition and provider details'), children: [
-        Text('Original: ${c.source.id}'),
-        if (c.selectedSnapshot != null) Text('Area: ${c.selectedSnapshot!.toJson()}'),
-        if (c.derivation != null) Text('Preview provenance: ${c.derivation!.toJson()}'),
-        button('availability', 'Check recognition availability', c.refreshAvailability, enabled: !c.busy),
-        for (final state in c.readiness) ListTile(title: Text('${state.providerId}: ${state.state.name}'),
+      ExpansionTile(key: const ValueKey('image-region-details'), title: const Text('認識結果・処理の詳細'), children: [
+        if (_error != null || c.error != null) Text('処理の詳細: ${_error ?? c.error}'),
+        Text('原画像: ${c.source.id}'),
+        if (c.selectedSnapshot != null) Text('選択範囲: ${c.selectedSnapshot!.toJson()}'),
+        if (c.derivation != null) Text('確認画像の導出元: ${c.derivation!.toJson()}'),
+        button('availability', '文字認識の利用可否を確認', c.refreshAvailability, enabled: !c.busy),
+        for (final state in c.readiness) ListTile(title: Text('${state.providerId}: ${_providerStateLabel(state.state)}'),
           subtitle: Text(state.reason ?? state.modelName ?? ''),
           trailing: state.state == RecognitionProviderState.downloadable ? TextButton(
             onPressed: allowed && !c.busy ? () => unawaited(_run(c, owner, target,
               () => c.prepareProvider(state.providerId))) : null,
-            child: const Text('Prepare')) : null),
+            child: const Text('利用準備')) : null),
         for (final extraction in extractions) ...[
-          Text('Report ${extraction.id}'),
+          Text('認識記録 ${extraction.id}'),
           for (final run in extraction.comparison.runs) ...[
-            Text('${run.desiredConfigurationId}: ${run.status.name}; actual ${run.actualConfigurationId ?? 'unavailable'}'),
-            if (run.fallbackReason != null) Text('Fallback: ${run.fallbackReason}'),
+            Text('${run.desiredConfigurationId}: ${_runStatusLabel(run.status)}; 実際の構成 ${run.actualConfigurationId ?? '利用不可'}'),
+            if (run.fallbackReason != null) Text('標準処理への切替理由: ${run.fallbackReason}'),
             for (final attempt in run.attempts) ...[
-              Text('${attempt.providerId}: ${attempt.executed ? 'executed' : 'not executed'}'),
+              Text('${attempt.providerId}: ${attempt.executed ? '実行済み' : '未実行'}'),
               if (attempt.result.text != null) SelectableText(attempt.result.text!),
               if (attempt.result.interpretation != null) SelectableText(attempt.result.interpretation!),
               for (final failure in attempt.result.failures) Text('${failure.code}: ${failure.message}'),
@@ -275,17 +297,17 @@ class _ImageRegionEditorPanelState extends State<ImageRegionEditorPanel> {
           ],
         ],
       ]),
-      ExpansionTile(key: const ValueKey('image-region-ai'), title: const Text('Advanced: optional local AI'), children: [
-        const Text('Suggestions require explicit selection and a human source check before quotation adoption.'),
-        button('recognize-ai', 'Recognize with local AI supplement',
+      ExpansionTile(key: const ValueKey('image-region-ai'), title: const Text('詳細設定：端末内AIによる補完'), children: [
+        const Text('候補は自分で選び、原文と照合してから引用文として採用してください。'),
+        button('recognize-ai', '端末内AIで補完して読み取る',
           () => c.recognize(supplementWithLocalAi: true), enabled: confirmed && !c.busy),
         for (final extraction in extractions)
           for (final attempt in extraction.comparison.runs.expand((r) => r.attempts).where((a) => a.executed)) ...[
             if (attempt.result.interpretation != null)
-              button('use-ai-${attempt.id}', 'Use interpretation for source checking',
+              button('use-ai-${attempt.id}', '解釈を原文確認の参考にする',
                 () => c.useAiCandidate(extraction.id, attempt.id, interpretation: true)),
             for (var i = 0; i < attempt.result.candidates.length; i++)
-              button('use-ai-${attempt.id}-$i', 'Use candidate: ${attempt.result.candidates[i].value}',
+              button('use-ai-${attempt.id}-$i', '候補を使う: ${attempt.result.candidates[i].value}',
                 () => c.useAiCandidate(extraction.id, attempt.id, candidateIndex: i)),
           ],
       ]),
