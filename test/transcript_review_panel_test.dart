@@ -44,8 +44,8 @@ void main() {
             interactionAllowed: () => allowed,
           ),
         );
-        await tester.ensureVisible(find.text('Transcript history'));
-        await tester.tap(find.text('Transcript history'));
+        await tester.ensureVisible(find.text('文字起こしの履歴'));
+        await tester.tap(find.text('文字起こしの履歴'));
         await tester.pumpAndSettle();
         final field = tester.widget<TextField>(
           find.byKey(const ValueKey('transcript-review-text')),
@@ -144,8 +144,8 @@ void main() {
           await tester.pumpWidget(
             _root(h.controller, onChanged: callbacks.add),
           );
-          await tester.ensureVisible(find.text('Transcript history'));
-          await tester.tap(find.text('Transcript history'));
+          await tester.ensureVisible(find.text('文字起こしの履歴'));
+          await tester.tap(find.text('文字起こしの履歴'));
           await tester.pumpAndSettle();
           final edit = tester
               .widget<TextField>(
@@ -223,14 +223,14 @@ void main() {
         // When exact Unicode/whitespace is typed, explicitly recorded, then intentionally cleared.
         await tester.enterText(field, ' 日本語📘\n  exact ');
         await tester.pump();
-        expect(find.text('Unrecorded changes'), findsOneWidget);
+        expect(find.text('未記録の修正があります'), findsOneWidget);
         expect(callbacks, isEmpty);
         expect(h.controller.review!.revisions, isEmpty);
         await _tap(tester, 'transcript-review-record-correction');
         expect(callbacks.single.currentText, ' 日本語📘\n  exact ');
         await tester.enterText(field, '');
         await tester.pump();
-        expect(find.text('Unrecorded changes'), findsOneWidget);
+        expect(find.text('未記録の修正があります'), findsOneWidget);
         await _tap(tester, 'transcript-review-record-correction');
         // Then exact revisions include the empty clear and no disk-save claim/write is fabricated.
         expect(callbacks.length, 2);
@@ -244,7 +244,7 @@ void main() {
           ),
           isTrue,
         );
-        expect(find.text('Unrecorded changes'), findsNothing);
+        expect(find.text('未記録の修正があります'), findsNothing);
         expect(h.store.documentWrites, 0);
         await tester.pumpWidget(const SizedBox.shrink());
       },
@@ -332,7 +332,7 @@ void main() {
         final field = find.byKey(const ValueKey('transcript-review-text'));
         // Then the latest proposal is separate and older history remains initially folded.
         expect(tester.widget<TextField>(field).controller!.text, 'manual');
-        expect(find.text('Recognition proposal'), findsOneWidget);
+        expect(find.text('文字起こしの候補'), findsOneWidget);
         expect(find.text('second proposal'), findsOneWidget);
         expect(
           find.byKey(
@@ -345,7 +345,7 @@ void main() {
         final latestSelected = h.controller.review!;
         final history = find.byKey(const ValueKey('transcript-review-history'));
         await tester.ensureVisible(history);
-        await tester.tap(find.text('Transcript history'));
+        await tester.tap(find.text('文字起こしの履歴'));
         await tester.pumpAndSettle();
         await _tap(tester, 'transcript-review-use-${first.reports.single.id}');
         // Then exact ordered reports/revisions and selected source links are retained.
@@ -396,7 +396,7 @@ void main() {
           await tester.runAsync(h.controller.transcribe);
           await tester.pumpWidget(_root(h.controller));
           // When actual attempt diagnostics are displayed and older proposals are explicitly expanded.
-          expect(find.text('Recognition: ${status.name}'), findsOneWidget);
+          expect(find.text('認識: ${status.name}'), findsOneWidget);
           expect(
             find.byKey(const ValueKey('transcript-review-use-proposal')),
             findsNothing,
@@ -404,8 +404,8 @@ void main() {
           final field = find.byKey(const ValueKey('transcript-review-text'));
           await tester.enterText(field, ' still editable ');
           await tester.pump();
-          await tester.ensureVisible(find.text('Transcript history'));
-          await tester.tap(find.text('Transcript history'));
+          await tester.ensureVisible(find.text('文字起こしの履歴'));
+          await tester.tap(find.text('文字起こしの履歴'));
           await tester.pumpAndSettle();
           // Then failure supplies no fake proposal and prior exact success remains selectable in history.
           expect(h.controller.draftText, ' still editable ');
@@ -482,7 +482,7 @@ void main() {
         final settings = _Settings();
         final view = SettingsView.fromService(service: settings);
         await tester.pumpWidget(_root(h.controller, settings: view, scale: 2));
-        expect(find.text('Record audio first'), findsOneWidget);
+        expect(find.text('先に音声を録音してください'), findsOneWidget);
         expect(
           find.byKey(const ValueKey('transcript-review-text')),
           findsNothing,
@@ -495,12 +495,12 @@ void main() {
         await tester.ensureVisible(field);
         await tester.enterText(field, ' unsaved 日本語 ');
         await tester.pump();
-        expect(find.text('Unrecorded changes'), findsOneWidget);
+        expect(find.text('未記録の修正があります'), findsOneWidget);
         expect(MediaQuery.textScalerOf(tester.element(field)).scale(16), 32);
         await _tap(tester, 'transcript-review-record-correction');
         // Then controls/history remain reachable, history folded and no implicit provider or disk save occurs.
         expect(h.controller.review!.currentText, ' unsaved 日本語 ');
-        expect(find.textContaining('manual at'), findsNothing);
+        expect(find.textContaining('manual 日時:'), findsNothing);
         expect(
           find.byKey(const ValueKey('transcript-review-history')),
           findsOneWidget,
