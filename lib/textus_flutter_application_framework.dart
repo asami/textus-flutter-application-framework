@@ -7,6 +7,7 @@ export 'src/authentication/user_account_authentication_page.dart';
 
 export 'src/retrieval/material_retrieval_controller.dart';
 export 'src/widgets/material_retrieval_panel.dart';
+export 'src/widgets/media_processing_information_page.dart';
 
 export 'src/widgets/structured_candidate_review_panel.dart';
 export 'src/capture/generated_draft_controller.dart';
