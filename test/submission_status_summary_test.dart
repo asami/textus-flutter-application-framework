@@ -335,7 +335,15 @@ void main() {
           record.value('operations'),
           'Original upload: Failed\nServer submission: Waiting',
         );
-        expect(record.value('uploadFailure'), 'Controlled safe failure.');
+        expect(
+          record.value('uploadFailure'),
+          '処理を完了できませんでした。原本と送信状況を確認してください。',
+        );
+        // Then displayed failure presentation does not reveal the controlled raw message.
+        expect(
+          record.value('uploadFailure'),
+          isNot(contains('Controlled safe failure.')),
+        );
         expect(record.value('submissionFailure'), isEmpty);
         expect(record.value('uploadWaiting'), 'Retry scheduled');
         expect(record.value('submissionWaiting'), 'Waiting for upload');
