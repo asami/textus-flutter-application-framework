@@ -5,6 +5,7 @@ import 'package:textus_flutter_core/textus_flutter_core.dart';
 import '../configuration/resource_list_detail_configuration.dart';
 import '../resource/resource_data_source.dart';
 import 'submission_facade.dart';
+import 'submission_failure_presentation.dart';
 import 'submission_presentation_configuration.dart';
 
 /// Wraps the exact immutable Core observation, alongside immutable display text.
@@ -66,10 +67,16 @@ final class SubmissionStatusResourceRecord extends ResourceRecord {
       'updatedAt': configuration.formatTime(status.updatedAt),
       'uploadWaiting': waiting(status.upload),
       'submissionWaiting': waiting(status.submission),
-      'uploadFailure': status.upload.failure?.message ?? '',
-      'submissionFailure': lake && handoff == null
-          ? registration?.failure?.message ?? ''
-          : handoff?.failure?.message ?? status.submission.failure?.message ?? '',
+      'uploadFailure': submissionFailureLabel(
+        status.upload.failure?.code,
+        hasAuthenticationBinding: status.hasAuthenticationBinding,
+      ),
+      'submissionFailure': submissionFailureLabel(
+        lake && handoff == null
+            ? registration?.failure?.code
+            : handoff?.failure?.code ?? status.submission.failure?.code,
+        hasAuthenticationBinding: status.hasAuthenticationBinding,
+      ),
       'nextAttemptAt': nextAttemptAt == null
           ? ''
           : configuration.formatTime(nextAttemptAt),

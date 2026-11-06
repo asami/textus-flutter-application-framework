@@ -3,6 +3,7 @@ import 'package:textus_flutter_core/textus_flutter_core.dart';
 
 import '../resource/resource_data_source.dart';
 import '../widgets/resource_list_detail.dart';
+import 'submission_failure_presentation.dart';
 import 'submission_status_binding.dart';
 import 'submission_status_workspace.dart';
 
@@ -266,7 +267,10 @@ class _SubmissionStatusPageState extends State<SubmissionStatusPage> {
         if (record.status.acknowledgement != null)
           Text('受領済みサーバーID: ${record.status.acknowledgement!.serverId}'),
         if (record.status.studioHandoff?.failure != null)
-          Text(record.status.studioHandoff!.failure!.message),
+          Text(submissionFailureLabel(
+            record.status.studioHandoff!.failure!.code,
+            hasAuthenticationBinding: record.status.hasAuthenticationBinding,
+          )),
         if (canReconcile && pending)
           const Text(
             'Studioへの送信は待機中です。同じ保存済みリクエストで送信処理の手配を再開します。',
