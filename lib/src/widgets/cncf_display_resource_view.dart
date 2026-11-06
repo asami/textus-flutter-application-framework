@@ -10,6 +10,9 @@ import '../resource/resource_view_model.dart';
 import '../view/resource_list_detail_display_model.dart';
 import 'resource_list_detail.dart';
 
+String _displayText(BuildContext context, String english, String japanese) =>
+    Localizations.localeOf(context).languageCode == 'ja' ? japanese : english;
+
 /// Adds shared Text editing and trusted ordinary Business to standard List/Detail.
 class CncfDisplayResourceView extends StatefulWidget {
   const CncfDisplayResourceView({
@@ -316,7 +319,7 @@ class _CncfDisplayResourceViewState extends State<CncfDisplayResourceView> {
                                   _routeOpen
                               ? null
                               : () => _edit(controller, viewModel, session),
-                          child: const Text('Edit'),
+                          child: Text(_displayText(context, 'Edit', '編集')),
                         ),
                       ],
                     ),
@@ -333,7 +336,7 @@ class _CncfDisplayResourceViewState extends State<CncfDisplayResourceView> {
                       if (controller.needsReconciliation)
                         IconButton(
                           key: const Key('cncf-display-reload'),
-                          tooltip: 'Reload',
+                          tooltip: _displayText(context, 'Reload', '再読込'),
                           onPressed: controller.busy || controller.isDisposed
                               ? null
                               : controller.reload,
@@ -354,7 +357,13 @@ class _CncfDisplayResourceViewState extends State<CncfDisplayResourceView> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text('This screen configuration is unavailable.'),
+                        Text(
+                          _displayText(
+                            context,
+                            'This screen configuration is unavailable.',
+                            'この画面は現在利用できません。',
+                          ),
+                        ),
                         TextButton(
                           key: const Key('cncf-display-presentation-reload'),
                           onPressed:
@@ -368,7 +377,7 @@ class _CncfDisplayResourceViewState extends State<CncfDisplayResourceView> {
                                   viewModel,
                                   session,
                                 ),
-                          child: const Text('Reload'),
+                          child: Text(_displayText(context, 'Reload', '再読込')),
                         ),
                       ],
                     ),
@@ -428,29 +437,73 @@ class _Result extends StatelessWidget {
       children: [
         if (businessReceipt != null)
           Text(
-            'Committed ${businessReceipt.outcome}, revision ${businessReceipt.revision}',
+            _displayText(
+              context,
+              'Committed ${businessReceipt.outcome}, revision ${businessReceipt.revision}',
+              '受付済み ${businessReceipt.outcome}、更新番号 ${businessReceipt.revision}',
+            ),
           ),
-        if (business && affected != null) Text('Affected resource: $affected'),
-        if (mismatch) const Text('Select the affected resource before Reload.'),
+        if (business && affected != null)
+          Text(
+            _displayText(
+              context,
+              'Affected resource: $affected',
+              '対象の資料: $affected',
+            ),
+          ),
+        if (mismatch)
+          Text(
+            _displayText(
+              context,
+              'Select the affected resource before Reload.',
+              '対象の資料を選んでから再読込してください。',
+            ),
+          ),
         if (receipt != null)
-          Text('Committed ${receipt.outcome}, revision ${receipt.revision}'),
+          Text(
+            _displayText(
+              context,
+              'Committed ${receipt.outcome}, revision ${receipt.revision}',
+              '受付済み ${receipt.outcome}、更新番号 ${receipt.revision}',
+            ),
+          ),
         if (controller.needsReconciliation)
           Text(
-            business
-                ? 'Reload required. Do not repeat the command.'
-                : 'Reload required. Do not repeat Save.',
+            _displayText(
+              context,
+              business
+                  ? 'Reload required. Do not repeat the command.'
+                  : 'Reload required. Do not repeat Save.',
+              business
+                  ? '再読込が必要です。同じ操作を繰り返さないでください。'
+                  : '再読込が必要です。保存を繰り返さないでください。',
+            ),
           ),
         if (!business &&
             controller.needsReconciliation &&
             receipt?.reloadRequired == true)
-          const Text('Committed; projection pending'),
+          Text(
+            _displayText(
+              context,
+              'Committed; projection pending',
+              '受付済み（表示への反映待ち）',
+            ),
+          ),
         if (controller.failure != null)
           Text(
-            !business && failure?.isEditableRejection == true
-                ? 'Check the marked value.'
-                : failure?.isConflict == true
-                ? 'The resource changed. Reload required.'
-                : 'Could not complete the operation.',
+            _displayText(
+              context,
+              !business && failure?.isEditableRejection == true
+                  ? 'Check the marked value.'
+                  : failure?.isConflict == true
+                  ? 'The resource changed. Reload required.'
+                  : 'Could not complete the operation.',
+              !business && failure?.isEditableRejection == true
+                  ? '入力内容を確認してください。'
+                  : failure?.isConflict == true
+                  ? '資料が変更されました。再読込してください。'
+                  : '操作を完了できませんでした。',
+            ),
           ),
       ],
     );
@@ -537,15 +590,15 @@ class _EditorState extends State<_Editor> {
       final discard = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Discard changes?'),
+          title: Text(_displayText(context, 'Discard changes?', '変更を破棄しますか？')),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Keep editing'),
+              child: Text(_displayText(context, 'Keep editing', '編集を続ける')),
             ),
             TextButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('Discard'),
+              child: Text(_displayText(context, 'Discard', '破棄')),
             ),
           ],
         ),
@@ -608,13 +661,13 @@ class _EditorState extends State<_Editor> {
       child: Scaffold(
         key: const Key('cncf-display-editor'),
         appBar: AppBar(
-          title: const Text('Edit'),
+          title: Text(_displayText(context, 'Edit', '編集')),
           automaticallyImplyLeading: false,
           actions: [
             TextButton(
               key: const Key('cncf-display-cancel'),
               onPressed: _active && controller.busy ? null : _cancel,
-              child: const Text('Cancel'),
+              child: Text(_displayText(context, 'Cancel', 'キャンセル')),
             ),
           ],
         ),
@@ -630,13 +683,13 @@ class _EditorState extends State<_Editor> {
             FilledButton(
               key: const Key('cncf-display-save'),
               onPressed: _active && controller.canSave ? _save : null,
-              child: const Text('Save'),
+              child: Text(_displayText(context, 'Save', '保存')),
             ),
             if (controller.needsReconciliation)
               TextButton(
                 key: const Key('cncf-display-reload'),
                 onPressed: controller.busy || !_active ? null : _reload,
-                child: const Text('Reload'),
+                child: Text(_displayText(context, 'Reload', '再読込')),
               ),
           ],
         ),
