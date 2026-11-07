@@ -53,6 +53,15 @@ An application such as `nict-editing-studio-app` owns:
 - domain/application bindings
 - custom Widgets/actions only where framework configuration is insufficient
 
+### Firebase integrations
+
+For optional Firebase integrations, the Framework presents permission,
+availability and notification navigation through Core services. The consuming
+application maps an authorized action to its domain screen. Core's
+[Firebase provider architecture](https://github.com/asami/textus-flutter-core/blob/main/docs/design/firebase-provider-boundary.md)
+defines provider selection, diagnostics, notification delivery, attestation
+and presentation settings. The [Framework development plan](../phase/firebase-presentation-plan.md) covers permission and notification navigation.
+
 ## UI model layers
 
 The working model separates:

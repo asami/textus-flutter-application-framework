@@ -1,5 +1,7 @@
 # Development phases
 
+[Presentation for optional Firebase services](firebase-presentation-plan.md) is planned for later delivery with Core and the deployed notification provider.
+
 ## Planned common media actions — 2026-10-31
 
 [Media action integration](media-input-actions-plan.md) supplies one import-first
