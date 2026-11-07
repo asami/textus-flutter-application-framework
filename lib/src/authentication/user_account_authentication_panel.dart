@@ -139,7 +139,7 @@ class _UserAccountAuthenticationPanelState
       children: [
         Text('アカウント', style: Theme.of(context).textTheme.headlineSmall),
         const SizedBox(height: 16),
-        if (unavailable) const Text('ログインの接続を準備中です。'),
+        if (unavailable) const Text('ログインを利用できません。接続先の設定を確認してください。'),
         if (facade.isClosed) const Text('アカウント画面を終了しました。'),
         if (account != null) ...[
           Text(
@@ -244,7 +244,7 @@ String _logoutCopy(UserAccountLogoutResult result) {
 
 String _failureCopy(UserAccountAuthenticationFailure failure) =>
     switch (failure) {
-      UserAccountAuthenticationFailure.notConfigured => 'ログインの接続を準備中です。',
+      UserAccountAuthenticationFailure.notConfigured => 'ログインを利用できません。接続先の設定を確認してください。',
       UserAccountAuthenticationFailure.invalidCredentials =>
         'ログインIDまたはパスワードを確認してください。',
       UserAccountAuthenticationFailure.authorizationRequired =>

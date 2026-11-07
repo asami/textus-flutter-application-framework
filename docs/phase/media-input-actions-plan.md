@@ -1,8 +1,19 @@
 # Shared media action UI integration
 
-Status: PLANNED; execution not started
+Status: IN_PROGRESS; implementation started, actual consumer acceptance open
 Decision date: 2026-10-31
 Consumer: App Phase 7 ESA7-08
+
+2026-11-07: the user explicitly prioritized the non-server remainder of App
+Phase 7. Implement common input controls, preview/recovery and shared Fold/Web
+composition with controlled qualification now. Actual server/device acceptance
+remains later. This supersedes the earlier implementation-order gate below.
+
+Implementation update: common explicit import/preview/attachment controls,
+visible capability reasons/recheck, guarded navigation/mode changes and shared
+Fold-aware document layout are implemented. Controlled widget qualification
+and integrated review pass; actual Web/Fold/permission acceptance below stays
+open. See [Nov 7 journal](../journal/2026/11/2026-11-07-document-media-and-fold-controls.md).
 
 Implement [common media actions](../spec/media-input-actions.md) over the
 [Core workstream](../../../textus-flutter-core/docs/phase/media-input-capabilities-plan.md).

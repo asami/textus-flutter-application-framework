@@ -122,7 +122,7 @@ void main() {
         await expectLater(unavailable.signOut(), throwsStateError);
         // Then there are no backend calls, credential fields or working actions.
         expect(backend.calls, isEmpty);
-        expect(find.text('ログインの接続を準備中です。'), findsOneWidget);
+        expect(find.text('ログインを利用できません。接続先の設定を確認してください。'), findsOneWidget);
         expect(find.byType(TextField), findsNothing);
         expect(find.widgetWithText(FilledButton, 'ログイン'), findsNothing);
         expect(_flags(unavailable), everyElement(isFalse));
