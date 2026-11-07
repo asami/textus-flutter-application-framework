@@ -1,6 +1,6 @@
 # Development phases
 
-[Presentation for optional Firebase services](firebase-presentation-plan.md) is planned for later delivery with Core and the deployed notification provider.
+[Phase 5 — Presentation for Firebase-backed services](phase-5.md) is planned for later delivery. Progress is recorded in the [Phase 5 checklist](phase-5-checklist.md).
 
 ## Planned common media actions — 2026-10-31
 
