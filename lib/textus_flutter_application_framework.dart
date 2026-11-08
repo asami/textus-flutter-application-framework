@@ -6,6 +6,7 @@ export 'src/authentication/user_account_authentication_panel.dart';
 export 'src/authentication/user_account_authentication_page.dart';
 export 'src/authentication/user_account_protected_view.dart';
 export 'src/widgets/document_editing_workspace.dart';
+export 'src/widgets/voice_text_field.dart';
 export 'src/widgets/media_input_panel.dart';
 
 export 'src/retrieval/material_retrieval_controller.dart';
