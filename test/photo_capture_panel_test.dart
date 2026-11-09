@@ -219,8 +219,14 @@ void main() {
           // When the real UI admits work and then caller admission flips before settlement.
           await tester.runAsync(() async {
             // Given a current allowed production camera/preparation control.
+            if (operation == 'capture') camera.captureEntered = Completer<void>();
             // When its actual gesture dispatches in the real IO event zone.
             await tester.tap(control);
+            if (operation == 'capture') {
+              // Wait for the camera boundary after Core's durable recovery check,
+              // before releasing its result/error into an attached listener.
+              await camera.captureEntered!.future.timeout(const Duration(seconds: 10));
+            }
             // Then exactly that admitted operation owns the held command.
             expect(controller.busy, isTrue);
           });
@@ -1169,6 +1175,7 @@ final class _Camera implements CameraProvider {
   CapturedPhoto? photo = _photo();
   Object? error;
   Completer<CapturedPhoto?>? gate;
+  Completer<void>? captureEntered;
   int captures = 0;
   int recoveries = 0;
   @override
@@ -1177,6 +1184,7 @@ final class _Camera implements CameraProvider {
   // Count capture and return the controlled original/gate or actual configured fault.
   Future<CapturedPhoto?> capturePhoto() async {
     captures++;
+    if (captureEntered != null && !captureEntered!.isCompleted) captureEntered!.complete();
     if (error != null) {
       throw error!;
     }

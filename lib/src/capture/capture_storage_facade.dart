@@ -12,13 +12,35 @@ final class CaptureStorageFacade {
 
   final LocalCaptureStore _store;
 
+  /// Borrows this exact store and the caller-owned native video provider.
+  VideoCaptureRecovery createVideoRecovery({
+    required VideoInputProvider provider,
+  }) => VideoCaptureRecovery(store: _store, provider: provider);
+
+  /// Reads only durable picker metadata; no native acquisition is started.
+  Future<PendingVideoCapture?> pendingVideoCapture() =>
+      VideoCaptureRecovery.pendingIn(_store);
+
+  Future<void> acknowledgeVideoCapture({
+    required String id,
+    required VideoRecoveryTarget target,
+    required CaptureMaterialReference original,
+  }) => VideoCaptureRecovery.acknowledgeStored(
+    _store,
+    id: id,
+    target: target,
+    original: original,
+  );
+
   /// Creates an inert retrieval service borrowing this facade's exact store.
   /// The caller closes the returned service; storage ownership stays unchanged.
   LocalMaterialRetrievalService createMaterialRetrievalService({
     required MaterialRetrievalCorpus corpus,
     required String corpusId,
   }) => LocalMaterialRetrievalService(
-    store: _store, corpus: corpus, corpusId: corpusId,
+    store: _store,
+    corpus: corpus,
+    corpusId: corpusId,
   );
 
   /// Imports unchanged original bytes and returns Core's durable reference.

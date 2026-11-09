@@ -8,6 +8,7 @@ import '../display/display_presentation_controller.dart';
 import '../view/resource_list_detail_display_model.dart';
 import 'application_text_scaling.dart';
 import 'application_text_toolbar.dart';
+import 'voice_text_field.dart';
 
 /// Generic adaptive Display UI borrowing its controller and inherited Settings.
 class DisplaySessionView extends StatefulWidget {
@@ -575,14 +576,16 @@ class DisplaySessionViewState extends State<DisplaySessionView> {
       }
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
-        child: TextField(
-          key: ValueKey((
+        child: VoiceTextField(
+          key: ValueKey(('voice-display', locator)),
+          owner: session,
+          textFieldKey: ValueKey((
             'display-field',
             locator.screenId,
             locator.sectionId,
             locator.fieldId,
           )),
-          controller: editor,
+          controller: editor!,
           enabled: state.canSave,
           maxLines: null,
           decoration: InputDecoration(
