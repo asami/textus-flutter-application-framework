@@ -29,6 +29,7 @@ class VoiceTextInputScope extends InheritedWidget {
 class VoiceTextField extends StatefulWidget {
   const VoiceTextField({
     required this.controller,
+    this.focusNode,
     this.onChanged,
     this.decoration = const InputDecoration(),
     this.enabled = true,
@@ -44,6 +45,9 @@ class VoiceTextField extends StatefulWidget {
     super.key,
   });
   final TextEditingController controller;
+
+  /// Optional focus for the actual TextField; the caller owns and disposes it.
+  final FocusNode? focusNode;
   final ValueChanged<String>? onChanged;
   final InputDecoration decoration;
   final bool enabled, readOnly, obscureText, voiceInput;
@@ -223,6 +227,7 @@ class _VoiceTextFieldState extends State<VoiceTextField> {
     return TextField(
       key: widget.textFieldKey,
       controller: widget.controller,
+      focusNode: widget.focusNode,
       enabled: widget.enabled,
       readOnly: widget.readOnly,
       obscureText: widget.obscureText,
