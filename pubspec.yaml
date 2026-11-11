@@ -11,12 +11,14 @@ environment:
 dependencies:
   path_provider: ^2.1.6
   web: ^1.1.1
+  video_player: ^2.14.1
   flutter:
     sdk: flutter
   textus_flutter_core:
     path: ../textus-flutter-core
 
 dev_dependencies:
+  video_player_platform_interface: ^6.9.0
   image: 4.3.0
   flutter_test:
     sdk: flutter

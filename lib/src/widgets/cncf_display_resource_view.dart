@@ -9,6 +9,7 @@ import '../display/cncf_display_presentation_registry.dart';
 import '../resource/resource_view_model.dart';
 import '../view/resource_list_detail_display_model.dart';
 import 'resource_list_detail.dart';
+import 'voice_text_field.dart';
 
 String _displayText(BuildContext context, String english, String japanese) =>
     Localizations.localeOf(context).languageCode == 'ja' ? japanese : english;
@@ -712,8 +713,10 @@ class _EditorState extends State<_Editor> {
     }
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
-      child: TextField(
-        key: ValueKey((
+      child: VoiceTextField(
+        key: ValueKey(('voice-cncf-display', field.locator)),
+        owner: controller,
+        textFieldKey: ValueKey((
           'cncf-display-field',
           field.locator.sectionId,
           field.locator.fieldId,

@@ -33,6 +33,52 @@ void main() {
     ),
   );
 
+  group('Caller-owned field focus', () {
+    testWidgets(
+      'should forward focus and preserve caller ownership after unmount',
+      (tester) async {
+        // Given an ordinary field with a caller-owned focus node and edit callback.
+        final target = TextEditingController(text: '既存');
+        final focus = FocusNode();
+        addTearDown(target.dispose);
+        addTearDown(focus.dispose);
+        final providers = VoiceInputFixture();
+        final edits = <String>[];
+        await tester.pumpWidget(
+          app(
+            VoiceTextField(
+              controller: target,
+              focusNode: focus,
+              onChanged: edits.add,
+            ),
+            providers,
+          ),
+        );
+        final field = tester.widget<TextField>(find.byType(TextField));
+        expect(field.focusNode, same(focus));
+        expect(focus.hasFocus, isFalse);
+        // When the caller requests focus without tapping the field.
+        focus.requestFocus();
+        await tester.pump();
+        // Then the editable owns focus and its keyboard client accepts normal text.
+        expect(focus.hasFocus, isTrue);
+        expect(tester.testTextInput.isVisible, isTrue);
+        tester.testTextInput.enterText('普通の編集');
+        await tester.pump();
+        expect(target.text, '普通の編集');
+        expect(edits, ['普通の編集']);
+        expect(providers.sessions, 0);
+        // When the widget unmounts before the caller disposes its node.
+        await tester.pumpWidget(const SizedBox.shrink());
+        // Then the node remains usable by its caller after the field detaches.
+        void listener() {}
+        focus.addListener(listener);
+        focus.removeListener(listener);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  });
+
   testWidgets('dictation and explicit conversion do not edit until Apply', (
     tester,
   ) async {
