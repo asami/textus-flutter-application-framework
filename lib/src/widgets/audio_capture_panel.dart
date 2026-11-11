@@ -118,24 +118,24 @@ class _AudioCapturePanelState extends State<AudioCapturePanel> {
       final content = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Audio'),
+          const Text('音声'),
           if (!controller.facade.isSupported)
-            const Text('Audio recording unavailable'),
+            const Text('この端末では録音を利用できません'),
           if (controller.state == AudioCaptureState.recording)
-            Text('Recording: ${controller.elapsedSeconds} seconds'),
+            Text('録音中: ${controller.elapsedSeconds}秒'),
           if (controller.state == AudioCaptureState.saving)
-            const Text('Saving audio'),
+            const Text('音声を保存しています'),
           if (controller.state == AudioCaptureState.preparing)
-            const Text('Checking or preparing transcription'),
+            const Text('文字起こしの準備を確認しています'),
           if (controller.state == AudioCaptureState.transcribing)
-            const Text('Transcribing audio'),
+            const Text('文字起こし中'),
           if (controller.state == AudioCaptureState.playing)
-            const Text('Playing audio'),
+            const Text('音声を再生しています'),
           if (controller.facade.pendingOriginal != null)
-            const Text('Audio not saved'),
+            const Text('音声が未保存です'),
           if (original != null)
             Text(
-              'Saved original: ${original.durationMilliseconds / 1000} seconds',
+              '保存済み音声: ${original.durationMilliseconds / 1000}秒',
             ),
           Wrap(
             spacing: 8,
@@ -144,21 +144,21 @@ class _AudioCapturePanelState extends State<AudioCapturePanel> {
               if (original == null && controller.facade.pendingOriginal == null)
                 button(
                   'record',
-                  'Record',
+                  '録音する',
                   controller.startRecording,
                   controller.canStartRecording,
                 ),
               if (controller.state == AudioCaptureState.recording) ...[
                 button(
                   'stop',
-                  'Stop',
+                  '録音を停止',
                   controller.stopRecording,
                   controller.canStopRecording,
                   report: true,
                 ),
                 button(
                   'cancel',
-                  'Cancel',
+                  '録音を取り消す',
                   controller.cancelRecording,
                   controller.canCancelRecording,
                 ),
@@ -166,7 +166,7 @@ class _AudioCapturePanelState extends State<AudioCapturePanel> {
               if (controller.facade.pendingOriginal != null)
                 button(
                   'retry-save',
-                  'Retry save',
+                  '保存を再試行',
                   controller.retryPendingOriginal,
                   controller.canRetryPendingOriginal,
                   report: true,
@@ -174,20 +174,20 @@ class _AudioCapturePanelState extends State<AudioCapturePanel> {
               if (original != null) ...[
                 button(
                   'play',
-                  'Play',
+                  '再生',
                   controller.playOriginal,
                   controller.canPlayOriginal,
                 ),
                 if (controller.state == AudioCaptureState.playing)
                   button(
                     'stop-playback',
-                    'Stop playback',
+                    '再生を停止',
                     controller.stopPlayback,
                     controller.canStopPlayback,
                   ),
                 button(
                   'transcribe',
-                  'Transcribe',
+                  '文字起こし',
                   controller.transcribe,
                   controller.canTranscribe,
                   report: true,
@@ -195,7 +195,7 @@ class _AudioCapturePanelState extends State<AudioCapturePanel> {
               ],
               button(
                 'check-transcription',
-                'Check transcription',
+                '文字起こしの利用可否を確認',
                 controller.refreshAvailability,
                 !controller.isDetached &&
                     !controller.busy &&
@@ -206,34 +206,34 @@ class _AudioCapturePanelState extends State<AudioCapturePanel> {
                   AudioProviderState.downloadable)
                 button(
                   'prepare-model',
-                  'Prepare model',
+                  '文字起こしを準備',
                   controller.prepareTranscription,
                   controller.canPrepareTranscription,
                 ),
               if (controller.canCancelTranscription)
                 button(
                   'cancel-transcription',
-                  'Cancel transcription',
+                  '文字起こしを取り消す',
                   controller.cancelTranscription,
                   true,
                 ),
             ],
           ),
           if (controller.availability != null) ...[
-            Text('Transcription: ${controller.availability!.state.name}'),
+            Text('文字起こし: ${controller.availability!.state.name}'),
             if (controller.availability!.reason != null)
               Text(controller.availability!.reason!),
           ],
           if (controller.error != null)
-            Text('Audio error: ${controller.error}'),
+            Text('音声エラー: ${controller.error}'),
           ExpansionTile(
             key: const ValueKey('audio-capture-details'),
-            title: const Text('Audio details'),
+            title: const Text('音声の詳細'),
             children: [
-              if (original != null) Text('Original: ${original.material.id}'),
+              if (original != null) Text('音声原本: ${original.material.id}'),
               if (controller.availability != null)
                 Text(
-                  'Provider: ${controller.availability!.providerId}; locale: ${controller.availability!.locale}',
+                  '認識処理: ${controller.availability!.providerId}; 言語: ${controller.availability!.locale}',
                 ),
             ],
           ),

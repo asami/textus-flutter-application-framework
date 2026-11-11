@@ -264,25 +264,25 @@ void main() {
             );
             await tester.pump();
             // Then unloaded state has no fabricated counts, query, navigation or scheduler work.
-            expect(find.text('Submission status not loaded.'), findsOneWidget);
+            expect(find.text('送信状況は未読込です。'), findsOneWidget);
             // Then unloaded input supplies no fabricated zero counts.
-            expect(find.text('Total: 0'), findsNothing);
+            expect(find.text('合計: 0'), findsNothing);
             expect(controller.summary, isNull);
             expect(opens, 0);
             expect(fixture.scheduler.calls, 0);
             final staleRefresh = tester
-                .widget<TextButton>(find.widgetWithText(TextButton, 'Refresh'))
+                .widget<TextButton>(find.widgetWithText(TextButton, '再読み込み'))
                 .onPressed!;
             final staleOpen = tester
                 .widget<TextButton>(
-                  find.widgetWithText(TextButton, 'View submissions'),
+                  find.widgetWithText(TextButton, '送信一覧を開く'),
                 )
                 .onPressed!;
             // When explicitly tapping Refresh.
-            await tester.tap(find.widgetWithText(TextButton, 'Refresh'));
+            await tester.tap(find.widgetWithText(TextButton, '再読み込み'));
             await tester.pump();
             // Then loading remains visible until the actual read settles.
-            expect(find.text('Loading submission status…'), findsOneWidget);
+            expect(find.text('送信状況を読み込んでいます…'), findsOneWidget);
             for (
               var attempt = 0;
               controller.loading && attempt < 100;
@@ -292,11 +292,11 @@ void main() {
             }
             await tester.pump();
             // Then the settled successful empty observation alone supplies zero counts.
-            expect(find.text('Total: 0'), findsOneWidget);
-            expect(find.text('Completed: 0'), findsOneWidget);
+            expect(find.text('合計: 0'), findsOneWidget);
+            expect(find.text('完了: 0'), findsOneWidget);
             await tester.tap(
               // When explicitly navigating through the App callback.
-              find.widgetWithText(TextButton, 'View submissions'),
+              find.widgetWithText(TextButton, '送信一覧を開く'),
             );
             // Then only navigation is counted without scheduler work.
             expect(opens, 1);
@@ -346,7 +346,7 @@ void main() {
               await tester.pumpAndSettle();
               // Then counts/actions wrap without overflow or implicit queries.
               expect(tester.takeException(), isNull);
-              expect(find.text('Total: 0'), findsOneWidget);
+              expect(find.text('合計: 0'), findsOneWidget);
               expect(fixture.scheduler.calls, 0);
               expect(opens, 1);
             }
@@ -357,12 +357,12 @@ void main() {
             await tester.pump();
             expect(
               // Then fixed fault replaces previous counts.
-              find.text('Could not load submission status.'),
+              find.text('送信状況を読み込めませんでした。'),
               findsOneWidget,
             );
-            expect(find.text('Total: 0'), findsNothing);
+            expect(find.text('合計: 0'), findsNothing);
             final unmounted = tester
-                .widget<TextButton>(find.widgetWithText(TextButton, 'Refresh'))
+                .widget<TextButton>(find.widgetWithText(TextButton, '再読み込み'))
                 .onPressed!;
             // When unmounting and invoking a captured Refresh callback.
             await tester.pumpWidget(const SizedBox.shrink());

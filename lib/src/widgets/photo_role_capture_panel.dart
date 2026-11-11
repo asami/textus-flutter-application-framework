@@ -9,7 +9,7 @@ final class PhotoRoleCaptureImage {
   /// Binds exact identity, synchronous cached bytes and independent status labels.
   const PhotoRoleCaptureImage({required this.materialId, required this.sourceIdentity,
     required this.readBytes, required this.selected, required this.readStatusLabel,
-    required this.recognitionStatusLabel, this.errorDescription});
+    required this.recognitionStatusLabel, this.previewReady, this.errorDescription});
 
   /// App-supplied durable original token.
   final String materialId;
@@ -21,6 +21,9 @@ final class PhotoRoleCaptureImage {
   final bool selected;
   /// Read status independent of attachment and recognition.
   final String readStatusLabel;
+  /// App's already-cached preview readiness, independent of the display label.
+  /// Null retains legacy readiness when [readStatusLabel] is exactly 'Loaded'.
+  final bool? previewReady;
   /// Recognition status independent of attachment and reading.
   final String recognitionStatusLabel;
   /// Optional observed acquisition/read failure description.
@@ -98,7 +101,7 @@ class _PhotoRoleCapturePanelState extends State<PhotoRoleCapturePanel> {
         TextButton(
           key: const ValueKey('photo-role-additional'),
           onPressed: () => setState(() => _additional = !_additional),
-          child: Text(_additional ? 'Hide additional photos' : 'Additional photos'),
+          child: Text(_additional ? '追加写真を閉じる' : '追加写真'),
         ),
         if (_additional) for (final role in widget.additionalRoles) _role(role),
       ],
@@ -112,8 +115,8 @@ class _PhotoRoleCapturePanelState extends State<PhotoRoleCapturePanel> {
       padding: const EdgeInsets.all(12),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Text(role.label),
-        Text(role.images.isEmpty ? 'Not captured' : 'Captured (${role.images.length} photos)'),
-        Text('Selected (${role.images.where((image) => image.selected).length} photos)'),
+        Text(role.images.isEmpty ? '未撮影' : '撮影済み（${role.images.length}枚）'),
+        Text('認識に使用（${role.images.where((image) => image.selected).length}枚）'),
         if (role.guidance != null) Text(role.guidance!),
         if (role.operationStatusLabel != null) Text(role.operationStatusLabel!),
         Wrap(spacing: 8, runSpacing: 8, children: [
@@ -126,34 +129,34 @@ class _PhotoRoleCapturePanelState extends State<PhotoRoleCapturePanel> {
           if (role.images.isEmpty) ElevatedButton(
             key: ValueKey('photo-role-capture:${role.id}'),
             onPressed: capture && widget.onCapture != null ? () => widget.onCapture!(role.id) : null,
-            child: const Text('Capture')),
+            child: const Text('撮影')),
           TextButton(key: ValueKey('photo-role-inspect:${role.id}'),
             onPressed: () => setState(() {
               if (!_inspected.add(role.id)) _inspected.remove(role.id);
-            }), child: Text(_inspected.contains(role.id) ? 'Hide photos' : 'Inspect')),
+            }), child: Text(_inspected.contains(role.id) ? '写真を閉じる' : '写真を確認')),
           ElevatedButton(key: ValueKey('photo-role-add:${role.id}'),
             onPressed: capture && widget.onCapture != null ? () => widget.onCapture!(role.id) : null,
-            child: const Text('Add')),
+            child: const Text('写真を追加')),
           ElevatedButton(key: ValueKey('photo-role-retake:${role.id}'),
             onPressed: capture && widget.onRetake != null ? () => widget.onRetake!(role.id) : null,
-            child: const Text('Retake')),
+            child: const Text('撮り直し')),
         ]),
         if (_inspected.contains(role.id))
           for (final image in role.images) Column(
             crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Text('Original: ${image.materialId}'),
+              Text('原画像: ${image.materialId}'),
               CheckboxListTile(key: ValueKey('photo-selected:${image.materialId}'),
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Use for recognition'), value: image.selected,
+                title: const Text('認識に使用'), value: image.selected,
                 onChanged: mutate && widget.onSelectionChanged != null ?
                   (selected) { if (selected != null) widget.onSelectionChanged!(image.materialId, selected); } : null),
-              Text('Read: ${image.readStatusLabel}'),
-              if (image.errorDescription != null) Text('Read error: ${image.errorDescription}'),
+              Text('読み込み: ${image.readStatusLabel}'),
+              if (image.errorDescription != null) Text('読み込みエラー: ${image.errorDescription}'),
               TextButton(key: ValueKey('photo-read-retry:${image.materialId}'),
                 onPressed: widget.interactionEnabled && widget.onRetryRead != null ?
                   () => widget.onRetryRead!(image.materialId) : null,
-                child: const Text('Retry read')),
-              Text('Recognition: ${image.recognitionStatusLabel}'),
+                child: const Text('再読み込み')),
+              Text('認識: ${image.recognitionStatusLabel}'),
               DropdownButton<String>(key: ValueKey('photo-correct-role:${image.materialId}'),
                 value: role.id, isExpanded: true, itemHeight: null,
                 items: [for (final choice in [...widget.roles, ...widget.additionalRoles])
@@ -182,7 +185,8 @@ class _RolePhotoPreviewState extends State<_RolePhotoPreview> {
   @override
   Widget build(BuildContext context) {
     final image = widget.image;
-    if (image.readStatusLabel != 'Loaded') {
+    final previewReady = image.previewReady ?? (image.readStatusLabel == 'Loaded');
+    if (!previewReady) {
       return Center(child: Text(image.readStatusLabel));
     }
     return CaptureImagePreview(
@@ -190,11 +194,11 @@ class _RolePhotoPreviewState extends State<_RolePhotoPreview> {
       materialId: image.materialId, sourceIdentity: image.sourceIdentity,
       readBytes: image.readBytes, maxDecodeDimension: 512,
       imageKey: ValueKey('photo-render:${image.materialId}:$_retry'),
-      semanticLabel: 'Attached original ${image.materialId}',
+      semanticLabel: '添付した原画像 ${image.materialId}',
       errorBuilder: (context, error, stack) => SingleChildScrollView(child: Column(
         mainAxisSize: MainAxisSize.min, children: [
-          const Text('Image decode failed'),
-          TextButton(onPressed: () => setState(() => _retry++), child: const Text('Retry preview')),
+          const Text('写真を表示できませんでした'),
+          TextButton(onPressed: () => setState(() => _retry++), child: const Text('表示を再試行')),
         ])),
     );
   }

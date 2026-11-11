@@ -7,7 +7,7 @@ class SubmissionCommitButton extends StatefulWidget {
   const SubmissionCommitButton({
     required this.controller,
     required this.eligible,
-    this.label = 'Commit',
+    this.label = '送信待ちに登録',
     this.disabledReason,
     super.key,
   });
@@ -76,17 +76,17 @@ class _SubmissionCommitButtonState extends State<SubmissionCommitButton> {
                   widget.eligible && !controller.busy && !controller.isDetached
                   ? () => _commit(controller)
                   : null,
-              child: Text(controller.busy ? 'Queuing…' : widget.label),
+              child: Text(controller.busy ? '登録しています…' : widget.label),
             ),
           ],
         ),
         if (!widget.eligible && widget.disabledReason != null)
           Text(widget.disabledReason!),
-        if (controller.failed) Text(controller.failureMessage!),
+        if (controller.failed) const Text('送信待ちに登録できませんでした。'),
         if (result != null) ...[
-          Text('Queued for background submission: ${result.record.request.id}'),
+          Text('送信待ちに登録済み: ${result.record.request.id}'),
           if (result.schedulingFailure != null)
-            const Text('Queued; background scheduling needs attention'),
+            const Text('送信待ちに登録済みです。送信処理の手配を確認してください。'),
         ],
       ],
     );

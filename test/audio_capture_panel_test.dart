@@ -490,17 +490,17 @@ void main() {
         await _tap(tester, 'audio-capture-record');
         await _pumpUntil(tester, () => h.controller.recordingStarted);
         await tester.pump(const Duration(seconds: 1));
-        expect(find.text('Recording: 1 seconds'), findsOneWidget);
+        expect(find.text('録音中: 1秒'), findsOneWidget);
         h.store.saveGate = Completer<void>();
         final failure = const FileSystemException('actual storage failure');
         h.store.importError = failure;
         await _tap(tester, 'audio-capture-stop');
         await _pumpUntil(tester, () => h.store.saveEntered.isCompleted);
-        expect(find.text('Saving audio'), findsOneWidget);
+        expect(find.text('音声を保存しています'), findsOneWidget);
         expect(callbacks, isEmpty);
         h.store.saveGate!.complete();
         await _pumpUntil(tester, () => !h.controller.busy);
-        expect(find.text('Audio not saved'), findsOneWidget);
+        expect(find.text('音声が未保存です'), findsOneWidget);
         expect(find.textContaining('actual storage failure'), findsOneWidget);
         h.store.importError = null;
         await _tap(tester, 'audio-capture-retry-save');
@@ -530,7 +530,7 @@ void main() {
               .onPressed,
           isNull,
         );
-        expect(find.text('Audio recording unavailable'), findsOneWidget);
+        expect(find.text('この端末では録音を利用できません'), findsOneWidget);
         h.provider.supported = true;
         await tester.runAsync(h.capture);
         final callbacks = <AudioTranscriptReview>[];
@@ -651,10 +651,10 @@ void main() {
         await _pumpUntil(tester, () => !h.controller.busy);
         // Then actual inherited scale remains two, no overflow occurs, and diagnostics remain collapsed.
         expect(
-          MediaQuery.textScalerOf(tester.element(find.text('Audio'))).scale(16),
+          MediaQuery.textScalerOf(tester.element(find.text('音声'))).scale(16),
           32,
         );
-        expect(find.textContaining('Provider:'), findsNothing);
+        expect(find.textContaining('認識処理:'), findsNothing);
         expect(
           find.byKey(const ValueKey('audio-capture-details')),
           findsOneWidget,

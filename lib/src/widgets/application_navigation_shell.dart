@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 
@@ -10,11 +11,16 @@ class ApplicationNavigationShell extends StatefulWidget {
   const ApplicationNavigationShell({
     required this.configuration,
     required this.pages,
+    this.beforeDestinationChange,
     super.key,
   });
 
   final ApplicationNavigationConfiguration configuration;
   final Map<String, Widget> pages;
+
+  /// Caller-owned draft disposition. Merely resizing never invokes this guard.
+  final Future<bool> Function(String currentId, String nextId)?
+  beforeDestinationChange;
 
   @override
   State<ApplicationNavigationShell> createState() =>
@@ -25,6 +31,7 @@ class _ApplicationNavigationShellState
     extends State<ApplicationNavigationShell> {
   late String _selectedId;
   late final Set<String> _visitedIds;
+  bool _selecting = false;
 
   @override
   void initState() {
@@ -57,10 +64,37 @@ class _ApplicationNavigationShellState
     final selectedIndex = destinations.indexWhere(
       (destination) => destination.id == _selectedId,
     );
-    void select(int index) => setState(() {
-      _selectedId = destinations[index].id;
-      _visitedIds.add(_selectedId);
-    });
+    void select(int index) {
+      final next = destinations[index].id;
+      if (_selecting || next == _selectedId) return;
+      final guard = widget.beforeDestinationChange;
+      void accept() => setState(() {
+        _selectedId = next;
+        _visitedIds.add(next);
+      });
+      if (guard == null) {
+        accept();
+        return;
+      }
+      final previous = _selectedId;
+      _selecting = true;
+      unawaited(() async {
+        try {
+          final allowed = await guard(previous, next);
+          if (mounted &&
+              allowed &&
+              previous == _selectedId &&
+              widget.configuration.destinations.any((d) => d.id == next)) {
+            accept();
+          }
+        } catch (_) {
+          // A failed disposition cannot silently discard caller-owned work.
+        } finally {
+          _selecting = false;
+        }
+      }());
+    }
+
     final scaler = ApplicationTextScaling.maybeTextScalerOf(context);
     return Scaffold(
       body: IndexedStack(

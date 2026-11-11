@@ -7,8 +7,8 @@ class SubmissionStatusSummaryPanel extends StatefulWidget {
   const SubmissionStatusSummaryPanel({
     required this.controller,
     this.openStatuses,
-    this.title = 'Submission status',
-    this.openStatusesLabel = 'View submissions',
+    this.title = '送信状況',
+    this.openStatusesLabel = '送信一覧を開く',
     super.key,
   });
 
@@ -83,21 +83,21 @@ class _SubmissionStatusSummaryPanelState
           children: [
             Text(widget.title),
             if (controller.loading)
-              const Text('Loading submission status…')
+              const Text('送信状況を読み込んでいます…')
             else if (controller.failed)
-              const Text('Could not load submission status.')
+              const Text('送信状況を読み込めませんでした。')
             else if (summary == null)
-              const Text('Submission status not loaded.')
+              const Text('送信状況は未読込です。')
             else
               Wrap(
                 spacing: 16,
                 runSpacing: 8,
                 children: [
-                  Text('Total: ${summary.totalCount}'),
-                  Text('Waiting: ${summary.waitingCount}'),
-                  Text('Running: ${summary.runningCount}'),
-                  Text('Attention: ${summary.attentionCount}'),
-                  Text('Completed: ${summary.completedCount}'),
+                  Text('合計: ${summary.totalCount}'),
+                  Text('待機中: ${summary.waitingCount}'),
+                  Text('実行中: ${summary.runningCount}'),
+                  Text('要確認: ${summary.attentionCount}'),
+                  Text('完了: ${summary.completedCount}'),
                 ],
               ),
             Wrap(
@@ -108,7 +108,7 @@ class _SubmissionStatusSummaryPanelState
                   onPressed: controller.loading || controller.isDetached
                       ? null
                       : () => _refresh(controller),
-                  child: const Text('Refresh'),
+                  child: const Text('再読み込み'),
                 ),
                 if (widget.openStatuses != null)
                   TextButton(

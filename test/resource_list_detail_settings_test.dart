@@ -22,7 +22,7 @@ void main() {
     expect(find.byKey(const Key('resource-restore-split')), findsOneWidget);
     await tester.tap(find.byKey(const Key('resource-restore-split')));
     await tester.pumpAndSettle();
-    expect(find.text('Select a resource'), findsOneWidget);
+    expect(find.text('項目を選択してください'), findsOneWidget);
     session.view.setValue(
       CommonSettings.panePreference.id,
       SettingsPanePreference.preferSinglePane,
@@ -400,7 +400,7 @@ void main() {
     expect(
       find.descendant(
         of: row,
-        matching: find.text('Span hinge\nUnavailable in this environment'),
+        matching: find.text('折り目をまたいで表示\nこの環境では利用できません'),
       ),
       findsOneWidget,
     );

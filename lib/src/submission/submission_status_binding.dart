@@ -5,6 +5,7 @@ import 'package:textus_flutter_core/textus_flutter_core.dart';
 import '../configuration/resource_list_detail_configuration.dart';
 import '../resource/resource_data_source.dart';
 import 'submission_facade.dart';
+import 'submission_failure_presentation.dart';
 import 'submission_presentation_configuration.dart';
 
 /// Wraps the exact immutable Core observation, alongside immutable display text.
@@ -30,7 +31,7 @@ final class SubmissionStatusResourceRecord extends ResourceRecord {
     }
 
     String stage(SubmissionTransferOperationStatus? operation) {
-      if (operation == null) return 'Not recorded';
+      if (operation == null) return '未記録';
       final label = configuration.operationStateLabel(operation.state);
       final completed = operation.completedCount;
       final total = operation.totalCount;
@@ -50,33 +51,39 @@ final class SubmissionStatusResourceRecord extends ResourceRecord {
     return {
       'name': configuration.itemLabel(status),
       'operations': lake
-          ? 'Preparation: ${stage(status.preparation)}\nUpload: ${stage(status.upload)}\nIntegrity verification: ${stage(status.verification)}\nTKL registration: ${stage(registration)}\nStudio receipt: ${acknowledgement != null ? configuration.formatTime(acknowledgement.receivedAt) : handoff == null ? 'Not received' : submission}'
+          ? '準備: ${stage(status.preparation)}\nアップロード: ${stage(status.upload)}\n原本の整合性確認: ${stage(status.verification)}\nTKL登録: ${stage(registration)}\nStudio受領: ${acknowledgement != null ? configuration.formatTime(acknowledgement.receivedAt) : handoff == null ? '未受領' : submission}'
           : '${configuration.uploadLabel}: $upload\n${configuration.submissionLabel}: $submission',
       'upload': upload,
       'submission': lake && handoff == null
-          ? 'Not received (separate from TKL registration)'
+          ? '未受領（TKLへの登録とは別です）'
           : submission,
       'storageDestination': lake
           ? status.tklProgress?.destinationLabel ??
-                'Assigned by TKL during preparation'
+                '準備時にTKLが指定'
           : configuration.storageDestinationLabel(status.storageConnectionId),
       'transportDestination': handoff == null
           ? configuration.transportDestinationLabel(status.transportConnectionId)
-          : 'TKL source: ${configuration.transportDestinationLabel(status.transportConnectionId)}\nStudio handoff: ${configuration.transportDestinationLabel(handoff.target.id)} (${handoff.target.id})',
+          : 'TKL転送元: ${configuration.transportDestinationLabel(status.transportConnectionId)}\nStudioへの送信: ${configuration.transportDestinationLabel(handoff.target.id)} (${handoff.target.id})',
       'updatedAt': configuration.formatTime(status.updatedAt),
       'uploadWaiting': waiting(status.upload),
       'submissionWaiting': waiting(status.submission),
-      'uploadFailure': status.upload.failure?.message ?? '',
-      'submissionFailure': lake && handoff == null
-          ? registration?.failure?.message ?? ''
-          : handoff?.failure?.message ?? status.submission.failure?.message ?? '',
+      'uploadFailure': submissionFailureLabel(
+        status.upload.failure?.code,
+        hasAuthenticationBinding: status.hasAuthenticationBinding,
+      ),
+      'submissionFailure': submissionFailureLabel(
+        lake && handoff == null
+            ? registration?.failure?.code
+            : handoff?.failure?.code ?? status.submission.failure?.code,
+        hasAuthenticationBinding: status.hasAuthenticationBinding,
+      ),
       'nextAttemptAt': nextAttemptAt == null
           ? ''
           : configuration.formatTime(nextAttemptAt),
       'acknowledgement': acknowledgement != null
           ? configuration.formatTime(acknowledgement.receivedAt)
           : status.acknowledgementUncertain
-          ? 'Outcome unknown'
+          ? '結果不明'
           : '',
     };
   }
@@ -156,10 +163,10 @@ final class SubmissionStatusBinding
         primaryField: 'name',
         secondaryField: 'operations',
         detailFields: List<ResourceFieldConfiguration>.unmodifiable([
-          const ResourceFieldConfiguration(key: 'name', label: 'Name'),
+          const ResourceFieldConfiguration(key: 'name', label: '項目名'),
           const ResourceFieldConfiguration(
             key: 'operations',
-            label: 'Operations',
+            label: '処理状況',
           ),
           if (!lake) ResourceFieldConfiguration(
             key: 'upload',
@@ -171,39 +178,39 @@ final class SubmissionStatusBinding
           ),
           const ResourceFieldConfiguration(
             key: 'storageDestination',
-            label: 'Storage destination',
+            label: '保存先',
           ),
           const ResourceFieldConfiguration(
             key: 'transportDestination',
-            label: 'Submission destination',
+            label: '送信先',
           ),
           const ResourceFieldConfiguration(
             key: 'updatedAt',
-            label: 'Updated at',
+            label: '更新日時',
           ),
           if (!lake) const ResourceFieldConfiguration(
             key: 'uploadWaiting',
-            label: 'Upload waiting reason',
+            label: 'アップロードの待機理由',
           ),
           if (!lake) const ResourceFieldConfiguration(
             key: 'submissionWaiting',
-            label: 'Submission waiting reason',
+            label: '送信の待機理由',
           ),
           if (!lake) const ResourceFieldConfiguration(
             key: 'uploadFailure',
-            label: 'Upload failure',
+            label: 'アップロードの失敗',
           ),
           if (!lake) const ResourceFieldConfiguration(
             key: 'submissionFailure',
-            label: 'Submission failure',
+            label: '送信の失敗',
           ),
           if (!lake) const ResourceFieldConfiguration(
             key: 'nextAttemptAt',
-            label: 'Next attempt at',
+            label: '再試行予定日時',
           ),
           if (!lake) const ResourceFieldConfiguration(
             key: 'acknowledgement',
-            label: 'Server acknowledgement',
+            label: 'サーバーの受領確認',
           ),
         ]),
       );

@@ -244,7 +244,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // When there is no selection and then the first Resource is selected.
-      expect(find.text('Select a resource'), findsOneWidget);
+      expect(find.text('項目を選択してください'), findsOneWidget);
       expect(find.byKey(const Key('resource-detail-focus')), findsNothing);
       await tester.tap(find.text('First resource'));
       await tester.pumpAndSettle();
@@ -539,7 +539,7 @@ void main() {
 
       // Then split list and not-found detail remain safe without semantic loss.
       expect(find.text('Second resource'), findsOneWidget);
-      expect(find.text('Resource not found'), findsOneWidget);
+      expect(find.text('項目が見つかりません'), findsOneWidget);
       expect(find.byKey(const Key('resource-detail-focus')), findsNothing);
       expect(find.byKey(const Key('resource-restore-split')), findsNothing);
       expect(model.selectedId, 'first');

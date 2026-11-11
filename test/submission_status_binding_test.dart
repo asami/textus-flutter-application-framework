@@ -24,8 +24,8 @@ void main() {
       final detail = await binding.getResource('unreported') as SubmissionStatusResourceRecord;
       // Then byte placement is complete but absent independent proof has no success label.
       expect(detail.value('operations'),
-        'Preparation: Succeeded (2/2)\nUpload: Succeeded (2/2)\n'
-        'Integrity verification: Not recorded\nTKL registration: Running\nStudio receipt: Not received');
+        '準備: Succeeded (2/2)\nアップロード: Succeeded (2/2)\n'
+        '原本の整合性確認: 未記録\nTKL登録: Running\nStudio受領: 未受領');
       expect(listed.value('operations'), detail.value('operations'));
       expect(detail.status.tklProgress!.materialRef, isNull);
       expect(binding.actionsFor(detail), isEmpty);

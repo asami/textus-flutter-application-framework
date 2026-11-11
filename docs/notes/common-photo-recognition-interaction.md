@@ -106,9 +106,16 @@ already admitted Core work settle without late state publication.
 desired/actual routes, fallback, every attempt, actual duration, ordered input
 links, shared work and all failure stage/code/message values. Raw OCR, barcode
 values/formats, interpretation, completed empty stages and duplicate opaque
-candidate kind/value proposals remain intact. Expand Provenance details to see
+candidate kind/value proposals remain intact. Expand 出典の詳細 to see
 the verbatim JSON extensions. A caller can render an original preview through
 its storage facade in later application composition.
+
+The current display uses Japanese labels, with aliases for the two exact
+built-in configuration ID/label pairs only; caller-supplied labels remain
+unchanged. Operation exceptions use fixed Japanese UI messages while the
+controller or settings snapshot retains the actual error. Serialized comparison
+failures and all other provenance values remain unchanged and fully visible.
+The expandable section is labeled 出典の詳細.
 
 Book-specific provider instructions and parsing are caller responsibilities.
 Passing a book-configured Nano provider replaces the Core default Nano registration;

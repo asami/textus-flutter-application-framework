@@ -1,8 +1,13 @@
 # User Account common login UI integration
 
-Status: PLANNED; execution not started
+Status: IN_PROGRESS; implementation qualification does not close acceptance
 Decision date: 2026-10-31
 Consumers: App Phase 6.10 ESA610-08, then Phase 7 ESA7-01
+
+2026-11-07: App's user selected advance Phase 7 work while remaining Phase 6.10
+acceptance is held. TFAF-UA03's [protected entry](../spec/user-account-protected-view.md)
+reuses the shared Japanese login facade with Core's browser adapter. Actual
+participant/Material/adaptive editing acceptance remains open below.
 
 Implement the [login facade contract](../spec/user-account-login-facade.md)
 using the [Core workstream](../../../textus-flutter-core/docs/phase/user-account-authentication-integration-plan.md).

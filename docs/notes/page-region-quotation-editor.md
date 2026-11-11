@@ -43,6 +43,15 @@ a Book schema, file transaction, route, capture-store ownership or save adapter.
 The public facade exactly forwards Core's load, derive, read, recognize,
 availability and preparation APIs. It never disposes borrowed services.
 
+## Japanese display policy
+
+All framework-owned user interface labels, controls, tooltips and semantic labels
+are displayed in Japanese. Technical provenance, identifiers, stored origin values,
+and original OCR or provider output remain unchanged. Raw exceptions appear only in
+the collapsed processing details. Standard OCR remains the first recognition action;
+local AI requires an explicit action, and every adopted quotation still requires a
+human source check.
+
 ## Geometry and history
 
 The canonical upright Core frame is both the displayed image and the selection
@@ -52,7 +61,7 @@ different normalized width and height for a non-square image. Core saves the
 derived PNG and its exact provenance; the preview reads those actual saved bytes.
 Ellipse pixels outside the selected mask are white according to Core's algorithm.
 
-`ImageRegionSelector` uses explicit Select area and Move image modes. Its bounded
+`ImageRegionSelector` uses explicit 範囲を選ぶ and 画像を動かす modes. Its bounded
 zoom and pan belong only to the viewport. Each drawing point passes through
 `TransformationController.toScene` once, then through contain-offset normalization.
 Letterbox starts and zero-area gestures are ignored, while endpoints are clamped.
@@ -64,7 +73,7 @@ old quotations, comments, extractions or audio. Other exact originals in a resto
 workspace are preserved but cannot be selected by this source's editor.
 Quotation and comment buffers are separate for every exact region/revision,
 including Unicode, whitespace and intentional empty clears. Switching areas keeps
-unsaved buffers. Save passage validates all dirty buffers before adopting any text
+unsaved buffers. 引用・コメントを保存 validates all dirty buffers before adopting any text
 revision; one missing quotation source check prevents partial text adoption.
 
 The pure `hasUnsavedText` getter inspects dirty quotation/comment buffers across
@@ -79,22 +88,22 @@ detach for the initiating original owner.
 
 ## Recognition and human adoption
 
-Recognize selected area requests standard local OCR only. It stores and displays
-raw output without replacing a dirty manual editor. Use OCR text is a separate
+「選択範囲を文字起こし」 requests standard local OCR only. It stores and displays
+raw output without replacing a dirty manual editor. 「OCRの文字を引用文に使う」 is a separate
 action that prefills the quotation editor and preserves its extraction source
 association through manual correction. The human source-check checkbox is required
 before recording a quotation, including manually entered text.
 
-Local AI is an explicit secondary action under Advanced. It is never prepared or
+Local AI is an explicit secondary action under 「詳細設定：端末内AIによる補完」. It is never prepared or
 invoked implicitly. Only actual executed interpretation/candidate output can be
 selected; selection still requires a subsequent human source check. Interpretation
 and summary output do not silently become quotations. Raw inputs, provider state,
 fallbacks, reports and histories remain available in collapsed details. Provider
-unavailability leaves manual quotation and comment editing usable. Check availability
-and Prepare are separate explicit operations, with no remote fallback added here.
+unavailability leaves manual quotation and comment editing usable. 「文字認識の利用可否を確認」
+and 「利用準備」 are separate explicit operations, with no remote fallback added here.
 
 Only one region service command is admitted at a time. Geometry selection and
-manual text remain usable during OCR. Cancel pending result retires adoption but
+manual text remain usable during OCR. 「処理結果を採用せず中止」 retires adoption but
 does not claim provider cancellation: the actual command must settle before another
 service command is admitted. Actual durable derivations and reports are inspectable
 through `retainedDerivations` and `retainedExtractions` even if selection retirement
@@ -103,7 +112,7 @@ busy state.
 
 ## Spoken comments and original retention
 
-Add spoken comment explicitly opens an existing `AudioCaptureController` for the
+「音声コメントを追加」 explicitly opens an existing `AudioCaptureController` for the
 captured immutable region snapshot. `AudioCapturePanel` and `TranscriptReviewPanel`
 remain the authoritative recording, playback, transcription and correction controls.
 Opening the controls does not record or prepare anything. Existing linked originals
@@ -139,7 +148,7 @@ when that policy temporarily denies new input or regional result admission chang
 An actual immutable adoption still reaches `onChanged` for its same mounted live
 owner; settlement starts no additional provider command.
 
-Use transcript as comment explicitly copies text into the independent comment
+「文字起こしをコメントに使う」 explicitly copies text into the independent comment
 buffer. A dirty common transcript is first recorded as a common correction, and
 the comment retains its actual correction index (or successful report identity).
 The quotation editor is unaffected. Further manual comment edits preserve this

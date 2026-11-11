@@ -24,14 +24,16 @@ Phase 2.1's exact final driver passed clean analysis and 276 tests.
 
 ## Catalog and finite typed choices
 
-The ordered groups are `appearance` (Appearance), `layout` (Layout),
-`accessibility` (Accessibility) and `application` (Application).
+The ordered groups are `appearance` (外観), `layout` (画面構成),
+`accessibility` (アクセシビリティ) and `application` (アプリ).
 
 | Stable setting ID | Group | Typed choices / wire choices | Default |
 | --- | --- | --- | --- |
 | `textus.layout.panePreference` | layout | `SettingsPanePreference`: `automatic`, `preferSinglePane`, `preferDualPane`; wire values are these exact enum names | `automatic` |
 | `textus.layout.hingePreference` | layout | `SettingsHingePreference`: `automatic`, `avoid`, `span`; wire values are these exact enum names | `automatic` |
 | `textus.appearance.textSizeMultiplier` | appearance | `double`: `1.0`, `1.15`, `1.30`; numeric wire values | `1.0` |
+
+The common catalog and settings shell chrome use fixed Japanese labels: 外観, 画面構成, アクセシビリティ, アプリ; 画面の分割, 自動, 1画面を優先, 2画面を優先, 折り目の扱い, 折り目を避ける, 折り目をまたいで表示, 文字サイズ, 標準, 大きめ and さらに大きく. Shell actions and status use 設定, 共通設定を初期値に戻す, この環境では利用できません, 現在の値, キャンセル, 共通設定を初期値に戻しますか？, 共通設定を初期値に戻します。アプリ固有の設定は保持されます。, 初期値に戻す, 設定をまだ読み込んでいません, 設定を読み込む, 設定を読み込んでいます, 設定を読み込めませんでした, 読み込みを再試行, この設定形式には対応していません, 設定を保存しています, 設定を保存できませんでした, 保存を再試行, 未保存の変更があります and 設定を保存しました. These labels are independent of stable typed and wire identities; supplied application extension labels remain caller-owned.
 
 Choice labels are user-facing and independent of wire identities. Pane and hinge
 preferences are distinct global types. They do not serialize
@@ -318,7 +320,7 @@ S03 shell controls are specified below; Phase 2.1 presentation/runtime integrati
 remains deferred.
 S01 fake service tests alone make no persistence or durability claim.
 
-## Borrowed native Settings shell and navigation
+## Borrowed native 設定 shell and navigation
 
 `SettingsShell(view: ..., capabilities: ..., presentation: ...)` observes the
 current View snapshot directly and renders registered groups and definitions in
@@ -353,7 +355,7 @@ Exactly two typed bool choices `{false, true}` render as a native switch regardl
 of catalog order/wire values. All other finite catalogs use a native labelled
 chooser showing the current choice. Selection forwards the stable registered ID
 and typed value; selecting the current value still creates one intent. Disabled
-controls remain visible with null callbacks and “Unavailable in this environment”;
+controls remain visible with null callbacks and “この環境では利用できません”;
 hidden controls are omitted. Capability updates preserve values and revisions.
 Cupertino switch rows do not toggle on row tap. Wrapped labels and descriptions
 retain OS text scaling. S03 alone does not apply the user text multiplier;
@@ -362,22 +364,22 @@ opts the same borrowed shell/routes/dialogs into S05 effective presentation.
 
 Choice/reset completion captures the original View and ignores stale completion
 after replacement/unmount. Choices additionally require the same registered
-definition instance and current available capability. Cancel/back/dismiss creates
+definition instance and current available capability. キャンセル/back/dismiss creates
 no intent. Replacement detaches old observation; neither shell nor route owns
 View disposal. The owner must detach widgets before disposing Views.
 
 Read and save status are independent snapshot projections. Not-loaded, loading,
 read-failed and unsupported states never report saved defaults. Explicit Load,
-Retry loading and Retry saving actions delegate to the View. Unsaved IDs display
-“Unsaved changes”; “Changes saved” requires ready/idle and no unsaved IDs. Errors
+読み込みを再試行 and 保存を再試行 actions delegate to the View. Unsaved IDs display
+“未保存の変更があります”; “設定を保存しました” requires ready/idle and no unsaved IDs. Errors
 are readable messages without raw adapter details or Future-based success banners.
 Controls stay editable according to capabilities while the controller enforces its
 read barriers, coalescing, retry and acknowledgement rules.
 
-“Reset common settings” is always visible and opens a native confirmation:
-“Restore common defaults. Application settings are kept.” Confirmation creates
+“共通設定を初期値に戻す” is always visible and opens a native confirmation:
+“共通設定を初期値に戻します。アプリ固有の設定は保持されます。” Confirmation creates
 exactly one common-reset intent, including already-default or loading states;
-Cancel creates none. Extension/unknown retained data and unsupported-version
+キャンセル creates none. Extension/unknown retained data and unsupported-version
 recovery remain controller-owned. Shell/navigation executable specifications use
 the unchanged controllable adapter; acceptance, Phase closure and runtime proof
 remain separate workflow gates. See the [text-presentation contract](settings-text-presentation.md)

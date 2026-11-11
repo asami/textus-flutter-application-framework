@@ -89,28 +89,28 @@ class _ImageRegionSelectorState extends State<ImageRegionSelector> {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Wrap(spacing: 8, runSpacing: 4, children: [
         for (final move in [false, true])
-          ChoiceChip(label: Text(move ? 'Move image' : 'Select area'),
+          ChoiceChip(label: Text(move ? '画像を動かす' : '範囲を選ぶ'),
             selected: _move == move, onSelected: widget.enabled ? (_) {
               if (generation != _generation) return;
               setState(() { _cancel(); _move = move; });
             } : null),
         for (final tool in ImageRegionTool.values)
-          ChoiceChip(label: Text(tool.name), selected: tool == _tool,
+          ChoiceChip(label: Text(switch (tool) { ImageRegionTool.rectangle => '長方形', ImageRegionTool.ellipse => '楕円', ImageRegionTool.circle => '円' }), selected: tool == _tool,
             onSelected: widget.enabled ? (_) {
               if (generation != _generation) return;
               setState(() { _cancel(); _tool = tool; _move = false; });
             } : null),
-        IconButton(tooltip: 'Zoom in', onPressed: widget.enabled ? () {
+        IconButton(tooltip: '拡大', onPressed: widget.enabled ? () {
           if (generation == _generation) { _cancel(); _zoom(1.5); setState(() {}); }
         } : null, icon: const Icon(Icons.zoom_in)),
-        IconButton(tooltip: 'Zoom out', onPressed: widget.enabled ? () {
+        IconButton(tooltip: '縮小', onPressed: widget.enabled ? () {
           if (generation == _generation) { _cancel(); _zoom(1 / 1.5); setState(() {}); }
         } : null, icon: const Icon(Icons.zoom_out)),
         TextButton(onPressed: widget.enabled ? () {
           if (generation == _generation) {
             setState(() { _cancel(); _transform.value = Matrix4.identity(); });
           }
-        } : null, child: const Text('Reset zoom')),
+        } : null, child: const Text('表示倍率を戻す')),
       ]),
       SizedBox(height: 320, child: LayoutBuilder(builder: (context, constraints) {
         final size = Size(constraints.maxWidth, constraints.maxHeight);
@@ -121,7 +121,7 @@ class _ImageRegionSelectorState extends State<ImageRegionSelector> {
           _gestureGeneration = null;
           _gestureLayout = null;
           _layout = null;
-          return const Text('Image viewport unavailable');
+          return const Text('画像の表示領域を確保できませんでした。');
         }
         final imageRect = ImageRegionViewport.containRect(pixelWidth: widget.frame.pixelWidth,
           pixelHeight: widget.frame.pixelHeight, viewportSize: size);
@@ -179,8 +179,8 @@ class _ImageRegionSelectorState extends State<ImageRegionSelector> {
               Positioned.fromRect(rect: imageRect, child: CaptureImagePreview(
                 materialId: frame.source.id, sourceIdentity: frame,
                 readBytes: () => frame.pngBytes,
-                semanticLabel: 'Source image for area selection',
-                errorBuilder: (_, error, _) => Text('Image display failed: $error'),
+                semanticLabel: '範囲選択用の原画像',
+                errorBuilder: (_, error, _) => const Text('画像を表示できませんでした。'),
               )),
               Positioned.fill(child: IgnorePointer(child: CustomPaint(
                 key: const ValueKey('image-region-overlay'),

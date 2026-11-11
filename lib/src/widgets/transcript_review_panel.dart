@@ -167,7 +167,7 @@ class _TranscriptReviewPanelState extends State<TranscriptReviewPanel> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (review == null)
-          const Text('Record audio first')
+          const Text('先に音声を録音してください')
         else ...[
           TextField(
             key: const ValueKey('transcript-review-text'),
@@ -175,10 +175,10 @@ class _TranscriptReviewPanelState extends State<TranscriptReviewPanel> {
             enabled: controller.canEditTranscript && interactionAllowed,
             minLines: 3,
             maxLines: null,
-            decoration: const InputDecoration(labelText: 'Current transcript'),
+            decoration: const InputDecoration(labelText: '現在の文字起こし'),
             onChanged: (text) => _edit(controller, generation, text),
           ),
-          if (controller.hasUnsavedText) const Text('Unrecorded changes'),
+          if (controller.hasUnsavedText) const Text('未記録の修正があります'),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -192,7 +192,7 @@ class _TranscriptReviewPanelState extends State<TranscriptReviewPanel> {
                         controller.recordCorrection,
                       )
                     : null,
-                child: const Text('Record correction'),
+                child: const Text('修正を記録'),
               ),
             ],
           ),
@@ -203,11 +203,11 @@ class _TranscriptReviewPanelState extends State<TranscriptReviewPanel> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text('Recognition proposal'),
+                    const Text('文字起こしの候補'),
                     Text(latest.text!),
                     Wrap(
                       children: [
-                        useButton(latest, 'use-proposal', 'Use proposal'),
+                        useButton(latest, 'use-proposal', 'この候補を使う'),
                       ],
                     ),
                   ],
@@ -215,14 +215,14 @@ class _TranscriptReviewPanelState extends State<TranscriptReviewPanel> {
               ),
             )
           else if (latest != null) ...[
-            Text('Recognition: ${latest.status.name}'),
+            Text('認識: ${latest.status.name}'),
             if (latest.errorMessage != null) Text(latest.errorMessage!),
             if (latest.errorCode != null)
-              Text('Recognition error: ${latest.errorCode}'),
+              Text('認識エラー: ${latest.errorCode}'),
           ],
           ExpansionTile(
             key: const ValueKey('transcript-review-history'),
-            title: const Text('Transcript history'),
+            title: const Text('文字起こしの履歴'),
             children: [
               for (final report in review.reports)
                 Padding(
@@ -231,7 +231,7 @@ class _TranscriptReviewPanelState extends State<TranscriptReviewPanel> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        'Report ${report.id}: ${report.status.name} at ${report.completedAt.toIso8601String()}',
+                        '認識記録 ${report.id}: ${report.status.name} 日時: ${report.completedAt.toIso8601String()}',
                       ),
                       if (report.text != null) Text(report.text!),
                       if (report.errorCode != null) Text(report.errorCode!),
@@ -243,7 +243,7 @@ class _TranscriptReviewPanelState extends State<TranscriptReviewPanel> {
                             useButton(
                               report,
                               'use-${report.id}',
-                              'Use this report',
+                              'この認識結果を使う',
                             ),
                           ],
                         ),
@@ -257,7 +257,7 @@ class _TranscriptReviewPanelState extends State<TranscriptReviewPanel> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        '${revision.source.name} at ${revision.recordedAt.toIso8601String()}; source: ${revision.reportId ?? 'manual'}',
+                        '${revision.source.name} 日時: ${revision.recordedAt.toIso8601String()}; 元の認識: ${revision.reportId ?? '手入力'}',
                       ),
                       Text(revision.text),
                     ],

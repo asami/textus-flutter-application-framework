@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart' show RenderProxyBox;
 import 'package:textus_flutter_core/textus_flutter_core.dart';
 
 import '../configuration/presentation_realization.dart';
@@ -11,6 +10,7 @@ import '../resource/resource_view_model.dart';
 import '../view/resource_list_detail_display_model.dart';
 import '../view/resource_list_detail_hinge_policy.dart';
 import 'application_text_scaling.dart';
+import 'approved_viewport.dart';
 import 'application_text_toolbar.dart';
 
 /// Standard, configuration-driven Resource List + Detail presentation.
@@ -39,7 +39,7 @@ class ResourceListDetail extends StatefulWidget {
   /// presentation hook grants no command or storage authority, and ordinary
   /// rebuilds may invoke it again. Null preserves the configured detail alone.
   final Widget Function(BuildContext context, ResourceRecord record)?
-      detailSupplementBuilder;
+  detailSupplementBuilder;
 
   /// Caller-provided toolbar widgets appended after common layout controls.
   ///
@@ -245,7 +245,7 @@ class _ResourceListDetailState extends State<ResourceListDetail> {
                     actions: actions,
                   ),
             body: SafeArea(
-              child: _ViewportObserver(
+              child: ApprovedViewport(
                 approvedViewport: _approvedBodyViewport,
                 requiresGeometry: requiresGeometry,
                 onViewport: _approveBodyViewport,
@@ -327,7 +327,7 @@ class _ResourceListDetailState extends State<ResourceListDetail> {
       ResourceListDetailPresentation.split when canFocus => [
         IconButton(
           key: const Key('resource-detail-focus'),
-          tooltip: 'Show detail full screen',
+          tooltip: '詳細を全画面で表示',
           icon: const Icon(Icons.open_in_full),
           onPressed: _displayModel.focusDetail,
         ),
@@ -336,7 +336,7 @@ class _ResourceListDetailState extends State<ResourceListDetail> {
       ResourceListDetailPresentation.compactList when splitCapable => [
         IconButton(
           key: const Key('resource-restore-split'),
-          tooltip: 'Show list and detail',
+          tooltip: '一覧と詳細を表示',
           icon: const Icon(Icons.close_fullscreen),
           onPressed: _displayModel.restoreSplit,
         ),
@@ -344,7 +344,7 @@ class _ResourceListDetailState extends State<ResourceListDetail> {
       ResourceListDetailPresentation.compactDetail when splitCapable => [
         IconButton(
           key: const Key('resource-restore-split'),
-          tooltip: 'Show list and detail',
+          tooltip: '一覧と詳細を表示',
           icon: const Icon(Icons.close_fullscreen),
           onPressed: _displayModel.restoreSplit,
         ),
@@ -503,99 +503,12 @@ class _ResourceListDetailState extends State<ResourceListDetail> {
       );
 
   Widget _detailOrPlaceholder() => widget.viewModel.selectedId == null
-      ? const Center(child: Text('Select a resource'))
+      ? const Center(child: Text('項目を選択してください'))
       : _ResourceDetail(
           configuration: widget.configuration,
           viewModel: widget.viewModel,
           detailSupplementBuilder: widget.detailSupplementBuilder,
         );
-}
-
-class _ViewportObserver extends SingleChildRenderObjectWidget {
-  const _ViewportObserver({
-    required this.approvedViewport,
-    required this.requiresGeometry,
-    required this.onViewport,
-    required super.child,
-  });
-
-  final Rect? approvedViewport;
-  final bool requiresGeometry;
-  final ValueChanged<Rect> onViewport;
-
-  @override
-  RenderObject createRenderObject(BuildContext context) =>
-      _RenderViewportObserver(approvedViewport, requiresGeometry, onViewport);
-
-  @override
-  void updateRenderObject(
-    BuildContext context,
-    _RenderViewportObserver renderObject,
-  ) {
-    renderObject
-      ..approvedViewport = approvedViewport
-      ..requiresGeometry = requiresGeometry
-      ..onViewport = onViewport;
-  }
-}
-
-class _RenderViewportObserver extends RenderProxyBox {
-  _RenderViewportObserver(
-    this._approvedViewport,
-    this._requiresGeometry,
-    this._onViewport,
-  );
-
-  Rect? _approvedViewport;
-  bool _requiresGeometry;
-  ValueChanged<Rect> _onViewport;
-  Rect? _lastReportedViewport;
-
-  set approvedViewport(Rect? value) {
-    if (_approvedViewport == value) {
-      return;
-    }
-    _approvedViewport = value;
-    markNeedsPaint();
-  }
-
-  set requiresGeometry(bool value) {
-    if (_requiresGeometry == value) {
-      return;
-    }
-    _requiresGeometry = value;
-    markNeedsPaint();
-  }
-
-  set onViewport(ValueChanged<Rect> value) => _onViewport = value;
-
-  @override
-  void paint(PaintingContext context, Offset offset) {
-    final origin = localToGlobal(Offset.zero);
-    final viewport = Rect.fromLTWH(
-      origin.dx,
-      origin.dy,
-      size.width,
-      size.height,
-    );
-    _reportViewport(viewport);
-    if (!_requiresGeometry || _approvedViewport == viewport) {
-      super.paint(context, offset);
-    }
-  }
-
-  void _reportViewport(Rect viewport) {
-    if (_lastReportedViewport == viewport) {
-      return;
-    }
-    _lastReportedViewport = viewport;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!attached || _lastReportedViewport != viewport) {
-        return;
-      }
-      _onViewport(viewport);
-    });
-  }
 }
 
 class _ResourceList extends StatelessWidget {
@@ -614,14 +527,14 @@ class _ResourceList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (viewModel.listFailed) {
-      return const Center(child: Text('Could not load resources'));
+      return const Center(child: Text('一覧を読み込めませんでした。'));
     }
     if (viewModel.listLoading || viewModel.resources == null) {
       return const Center(child: CircularProgressIndicator());
     }
     final resources = viewModel.resources!;
     if (resources.isEmpty) {
-      return const Center(child: Text('No resources'));
+      return const Center(child: Text('項目がありません'));
     }
     return ListView.builder(
       key: PageStorageKey<ResourceViewModel>(viewModel),
@@ -652,7 +565,7 @@ class _ResourceDetail extends StatelessWidget {
 
   /// Borrows the caller's ready-record presentation builder.
   final Widget Function(BuildContext context, ResourceRecord record)?
-      detailSupplementBuilder;
+  detailSupplementBuilder;
 
   List<ResourceAction> _visibleActions() {
     final available = viewModel.selectedActions;
@@ -671,13 +584,13 @@ class _ResourceDetail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (viewModel.detailFailed) {
-      return const Center(child: Text('Could not load resource'));
+      return const Center(child: Text('詳細を読み込めませんでした。'));
     }
     if (viewModel.detailLoading) {
       return const Center(child: CircularProgressIndicator());
     }
     final record = viewModel.selectedResource;
-    if (record == null) return const Center(child: Text('Resource not found'));
+    if (record == null) return const Center(child: Text('項目が見つかりません'));
     return ListView(
       children: [
         for (final field in configuration.detailFields)
@@ -686,7 +599,7 @@ class _ResourceDetail extends StatelessWidget {
             subtitle: Text(record.value(field.key)),
           ),
         if (viewModel.actionFailed)
-          const ListTile(title: Text('Could not update resource')),
+          const ListTile(title: Text('項目を更新できませんでした。')),
         for (final action in _visibleActions())
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),

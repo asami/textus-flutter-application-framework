@@ -384,7 +384,7 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Committed updated, revision 2'), findsNothing);
-      expect(find.text('Could not load resource'), findsOneWidget);
+      expect(find.text('詳細を読み込めませんでした。'), findsOneWidget);
       expect(
         find.text('Committed review-requested, revision 3'),
         findsOneWidget,

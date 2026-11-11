@@ -77,7 +77,7 @@ void main() {
           await tester.pump();
           // Then one reservation renders Queuing and disables further taps.
           expect(calls, 1);
-          expect(find.text('Queuing…'), findsOneWidget);
+          expect(find.text('登録しています…'), findsOneWidget);
           expect(
             tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
             isNull,
@@ -89,7 +89,7 @@ void main() {
           // Then no stale queue or UI result is published and no transfer runs.
           expect(controller.result, isNull);
           expect(
-            find.textContaining('Queued for background submission'),
+            find.textContaining('送信待ちに登録済み'),
             findsNothing,
           );
           expect(await queue.find(request.id), isNull);
@@ -166,11 +166,11 @@ void main() {
           await tester.pump();
           expect(
             // Then exact queued intent and scheduling warning remain separate from Submitted.
-            find.text('Queued for background submission: request1'),
+            find.text('送信待ちに登録済み: request1'),
             findsOneWidget,
           );
           expect(
-            find.text('Queued; background scheduling needs attention'),
+            find.text('送信待ちに登録済みです。送信処理の手配を確認してください。'),
             findsOneWidget,
           );
           expect(find.text('Submitted'), findsNothing);
@@ -192,7 +192,7 @@ void main() {
           expect(firstCalls, 1);
           expect(secondCalls, 0);
           expect(
-            find.textContaining('Queued for background submission'),
+            find.textContaining('送信待ちに登録済み'),
             findsNothing,
           );
           expect(controller.isDetached, isFalse);
@@ -201,7 +201,7 @@ void main() {
           await tester.pump();
           expect(
             // Then its distinct exact request ID is shown.
-            find.text('Queued for background submission: request2'),
+            find.text('送信待ちに登録済み: request2'),
             findsOneWidget,
           );
           final unmounted = tester
@@ -273,7 +273,7 @@ void main() {
         await tester.pumpAndSettle();
         // Then the fixed safe message replaces raw failure details.
         expect(calls, 1);
-        expect(find.text('Could not queue submission.'), findsOneWidget);
+        expect(find.text('送信待ちに登録できませんでした。'), findsOneWidget);
         expect(find.textContaining('secret raw'), findsNothing);
       } finally {
         // Release held work, remove presentation and drain borrowers before owner cleanup.

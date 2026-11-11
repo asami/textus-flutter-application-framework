@@ -82,10 +82,10 @@ void main() {
     final results = <ImageRegionGeometry>[];
     await tester.pumpWidget(view(h.controller.frame!, results.add));
     // When the user chooses ellipse and circle tools for the same unequal-axis drag.
-    await tester.tap(find.text('ellipse'));
+    await tester.tap(find.text('楕円'));
     await tester.pump();
     await drag(tester, const Offset(40, 80), const Offset(200, 160));
-    await tester.tap(find.text('circle'));
+    await tester.tap(find.text('円'));
     await tester.pump();
     await drag(tester, const Offset(40, 80), const Offset(200, 160));
     // Then the ellipse preserves unequal axes; the circle has equal raster-pixel axes.
@@ -105,9 +105,9 @@ void main() {
     final results = <ImageRegionGeometry>[];
     await tester.pumpWidget(view(h.controller.frame!, results.add, transform: transform));
     // When explicit zoom and Move mode pan the viewer before another Select-mode drag.
-    await tester.tap(find.byTooltip('Zoom in'));
+    await tester.tap(find.byTooltip('拡大'));
     await tester.pump();
-    await tester.tap(find.text('Move image'));
+    await tester.tap(find.text('画像を動かす'));
     await tester.pump();
     await tester.drag(find.byType(InteractiveViewer), const Offset(-30, -20));
     await tester.pumpAndSettle();
@@ -117,7 +117,7 @@ void main() {
     final rect = ImageRegionViewport.containRect(pixelWidth: 200, pixelHeight: 100,
       viewportSize: const Size(400, 320));
     final expected = ImageRegionViewport.fromDrag(start: start, end: end, imageRect: rect)!;
-    await tester.tap(find.text('Select area'));
+    await tester.tap(find.text('範囲を選ぶ'));
     await tester.pump();
     await drag(tester, const Offset(100, 140), const Offset(220, 230));
     // Then actual pointer selection agrees with a single inverse into the canonical source.
@@ -126,7 +126,7 @@ void main() {
     expect(results.single.y, closeTo(expected.y, 0.001));
     expect(results.single.width, closeTo(expected.width, 0.001));
     expect(results.single.height, closeTo(expected.height, 0.001));
-    await tester.tap(find.text('Reset zoom'));
+    await tester.tap(find.text('表示倍率を戻す'));
     await tester.pump();
     expect(transform.value, Matrix4.identity());
   });

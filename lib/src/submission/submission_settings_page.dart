@@ -9,8 +9,10 @@ import 'submission_settings_controller.dart';
 class SubmissionSettingsPage extends StatefulWidget {
   const SubmissionSettingsPage({
     required this.controller,
-    this.title = 'Submission settings',
+    this.title = '送信設定',
     this.tklDeliveryOnly = false,
+    this.participantAuthenticationRequired = false,
+    this.onOpenAccount,
     super.key,
   });
 
@@ -19,6 +21,10 @@ class SubmissionSettingsPage extends StatefulWidget {
 
   /// This route bootstraps TKL; physical Google storage is server-owned.
   final bool tklDeliveryOnly;
+
+  /// Read-only presentation policy; Core retains all permission authority.
+  final bool participantAuthenticationRequired;
+  final VoidCallback? onOpenAccount;
 
   @override
   State<SubmissionSettingsPage> createState() => _SubmissionSettingsPageState();
@@ -82,10 +88,17 @@ class _SubmissionSettingsPageState extends State<SubmissionSettingsPage> {
       !controller.busy &&
       !controller.isDetached;
 
+  bool get _participantMode => widget.participantAuthenticationRequired ||
+      widget.controller.snapshot?.participantAuthentication != null;
+
+  // Given a retained technical control, recheck current presentation policy too.
+  bool _technicalCurrent(SubmissionSettingsController controller) =>
+      _current(controller) && !_participantMode;
+
   void _addDrive(SubmissionSettingsController controller) {
     // Given explicit new-target input, When Add is tapped while current,
     // Then construct only that immutable definition or show a fixed safe error.
-    if (!_current(controller)) return;
+    if (!_technicalCurrent(controller)) return;
     try {
       final connection = DriveSubmissionConnection(
         id: _driveId.text,
@@ -93,16 +106,16 @@ class _SubmissionSettingsPageState extends State<SubmissionSettingsPage> {
         folderId: _folder.text,
       );
       setState(() => _formFailure = null);
-      if (_current(controller)) controller.putDrive(connection);
+      if (_technicalCurrent(controller)) controller.putDrive(connection);
     } on ArgumentError {
-      setState(() => _formFailure = 'Submission configuration is invalid.');
+      setState(() => _formFailure = '送信設定を確認してください。');
     }
   }
 
   void _addHttp(SubmissionSettingsController controller) {
     // Given explicit endpoint input, When Add is tapped while current,
     // Then Core validates HTTPS without acquisition, authorization or selection.
-    if (!_current(controller)) return;
+    if (!_technicalCurrent(controller)) return;
     try {
       final connection = HttpSubmissionConnection(
         id: _httpId.text,
@@ -113,11 +126,11 @@ class _SubmissionSettingsPageState extends State<SubmissionSettingsPage> {
         throw ArgumentError('TKL requires an HTTPS service root.');
       }
       setState(() => _formFailure = null);
-      if (_current(controller)) controller.putHttp(connection);
+      if (_technicalCurrent(controller)) controller.putHttp(connection);
     } on ArgumentError {
-      setState(() => _formFailure = 'Submission configuration is invalid.');
+      setState(() => _formFailure = '送信設定を確認してください。');
     } on FormatException {
-      setState(() => _formFailure = 'Submission configuration is invalid.');
+      setState(() => _formFailure = '送信設定を確認してください。');
     }
   }
 
@@ -140,22 +153,22 @@ class _SubmissionSettingsPageState extends State<SubmissionSettingsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Selections apply to new submissions'),
+        const Text('設定はこれから登録する送信内容に適用されます'),
         if (!widget.tklDeliveryOnly) ...[
-          const Text('Default storage'),
+          const Text('原本の保存先'),
           DropdownButton<String>(
             isExpanded: true,
             value: snapshot.selectedStorageConnectionId,
-            hint: const Text('None'),
+            hint: const Text('未選択'),
             items: [
-              const DropdownMenuItem<String>(value: null, child: Text('None')),
+              const DropdownMenuItem<String>(value: null, child: Text('未選択')),
               for (final drive in snapshot.driveConnections)
                 DropdownMenuItem(value: drive.id, child: Text(drive.id)),
             ],
             // Given a rendered snapshot, When changed, Then recheck its current owner.
             onChanged: enabled
                 ? (id) {
-                    if (_current(controller)) {
+                    if (_technicalCurrent(controller)) {
                       controller.select(
                         storageConnectionId: id,
                         transportConnectionId:
@@ -168,22 +181,22 @@ class _SubmissionSettingsPageState extends State<SubmissionSettingsPage> {
         ],
         Text(
           widget.tklDeliveryOnly
-              ? 'TKL service connection'
-              : 'Default transport',
+              ? 'TKL接続'
+              : '送信先',
         ),
         DropdownButton<String>(
           isExpanded: true,
           value: snapshot.selectedTransportConnectionId,
-          hint: const Text('None'),
+          hint: const Text('未選択'),
           items: [
-            const DropdownMenuItem<String>(value: null, child: Text('None')),
+            const DropdownMenuItem<String>(value: null, child: Text('未選択')),
             for (final http in snapshot.httpConnections)
               DropdownMenuItem(value: http.id, child: Text(http.id)),
           ],
           // Given both defaults, When transport changes, Then retain desired storage.
           onChanged: enabled
               ? (id) {
-                  if (_current(controller)) {
+                  if (_technicalCurrent(controller)) {
                     controller.select(
                       storageConnectionId: snapshot.selectedStorageConnectionId,
                       transportConnectionId: id,
@@ -207,35 +220,35 @@ class _SubmissionSettingsPageState extends State<SubmissionSettingsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Drive ID: ${drive.id}'),
-        Text('Account: ${drive.accountId}'),
-        Text('Folder: ${drive.folderId}'),
-        Text('Authorization: ${authorization?.name ?? 'Not checked'}'),
+        Text('Drive接続ID: ${drive.id}'),
+        Text('Googleアカウント: ${drive.accountId}'),
+        Text('フォルダー: ${drive.folderId}'),
+        Text('利用許可: ${_authorizationLabel(authorization)}'),
         if (controller.hasDriveAuthorization)
           Wrap(
             spacing: 8,
             children: [
               TextButton(
-                // Given this Drive ID, When tapped while current, Then refresh it only.
+                // Given this Drive接続ID, When tapped while current, Then refresh it only.
                 onPressed: enabled
                     ? () {
-                        if (_current(controller)) {
+                        if (_technicalCurrent(controller)) {
                           controller.refreshAuthorization(drive.id);
                         }
                       }
                     : null,
-                child: const Text('Refresh authorization'),
+                child: const Text('許可状態を確認'),
               ),
               TextButton(
-                // Given this Drive ID, When explicitly tapped, Then authorize it only.
+                // Given this Drive接続ID, When explicitly tapped, Then authorize it only.
                 onPressed: enabled
                     ? () {
-                        if (_current(controller)) {
+                        if (_technicalCurrent(controller)) {
                           controller.authorizeDrive(drive.id);
                         }
                       }
                     : null,
-                child: const Text('Authorize'),
+                child: const Text('利用を許可'),
               ),
             ],
           ),
@@ -247,6 +260,8 @@ class _SubmissionSettingsPageState extends State<SubmissionSettingsPage> {
   Widget build(BuildContext context) {
     final controller = widget.controller;
     final snapshot = controller.snapshot;
+    final participant = _participantMode;
+    final accountOpener = widget.onOpenAccount;
     final enabled = !controller.busy && !controller.isDetached;
     final scaler = ApplicationTextScaling.maybeTextScalerOf(context);
     final width = MediaQuery.sizeOf(context).width;
@@ -260,11 +275,26 @@ class _SubmissionSettingsPageState extends State<SubmissionSettingsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (widget.tklDeliveryOnly)
-                const Text(
-                  'TKL supplies the destination and transfer instructions. Google storage is configured on the server.',
+              if (participant)
+                const Text('アカウントでログインして送信します。送信先は担当者が管理します。'),
+              if (participant && accountOpener != null)
+                TextButton(
+                  onPressed: enabled
+                      ? () {
+                          if (_current(controller) &&
+                              identical(accountOpener, widget.onOpenAccount)) {
+                            accountOpener();
+                          }
+                        }
+                      : null,
+                  child: const Text('アカウントを開く'),
                 ),
-              if (snapshot != null) _defaults(controller, snapshot, enabled),
+              if (!participant && widget.tklDeliveryOnly)
+                const Text(
+                  '保存先と転送方法はTKLが指定します。Google側の保存先はサーバーで設定します。',
+                ),
+              if (!participant && snapshot != null)
+                _defaults(controller, snapshot, enabled),
               Wrap(
                 children: [
                   TextButton(
@@ -274,21 +304,25 @@ class _SubmissionSettingsPageState extends State<SubmissionSettingsPage> {
                             if (_current(controller)) controller.load();
                           }
                         : null,
-                    child: const Text('Reload'),
+                    child: const Text('再読み込み'),
                   ),
                 ],
               ),
               if (controller.loading)
-                const Text('Loading submission settings…')
+                const Text('送信設定を読み込んでいます…')
               else if (controller.failed)
-                Text(controller.failureMessage!)
+                Text(_configurationFailureLabel(controller.failureCode))
               else if (snapshot == null)
-                const Text('Submission settings not loaded.')
-              else if (snapshot.driveConnections.isEmpty &&
+                const Text('送信設定はまだ読み込まれていません。')
+              else if (participant &&
+                  (snapshot.participantAuthentication == null ||
+                      snapshot.selectedTransportConnectionId == null))
+                const Text('送信先を準備中です。担当者に確認してください。')
+              else if (!participant && snapshot.driveConnections.isEmpty &&
                   snapshot.httpConnections.isEmpty)
-                const Text('No submission connections configured.'),
-              if (_formFailure != null) Text(_formFailure!),
-              if (snapshot != null) ...[
+                const Text('送信先が設定されていません。'),
+              if (!participant && _formFailure != null) Text(_formFailure!),
+              if (!participant && snapshot != null) ...[
                 if (!widget.tklDeliveryOnly)
                   for (final drive in snapshot.driveConnections)
                     _drive(controller, drive, enabled),
@@ -299,41 +333,42 @@ class _SubmissionSettingsPageState extends State<SubmissionSettingsPage> {
                     connection: http,
                     snapshot: snapshot,
                     tklDeliveryOnly: widget.tklDeliveryOnly,
+                    technicalCurrent: () => _technicalCurrent(controller),
                   ),
                 const Divider(),
                 if (!widget.tklDeliveryOnly) ...[
-                  const Text('Add Drive'),
-                  _field(_driveId, 'Drive ID', enabled),
-                  _field(_account, 'Account ID', enabled),
-                  _field(_folder, 'Folder ID', enabled),
+                  const Text('Drive接続を追加'),
+                  _field(_driveId, 'Drive接続ID', enabled),
+                  _field(_account, 'Googleアカウント', enabled),
+                  _field(_folder, 'フォルダーID', enabled),
                   TextButton(
                     // Given form input, When explicitly tapped, Then add one safe definition.
                     onPressed: enabled ? () => _addDrive(controller) : null,
-                    child: const Text('Add Drive'),
+                    child: const Text('Drive接続を追加'),
                   ),
                 ],
                 Text(
                   widget.tklDeliveryOnly
-                      ? 'Add TKL service connection (test/bootstrap)'
-                      : 'Add HTTP',
+                      ? 'TKL接続を追加（検証・初期設定用）'
+                      : 'HTTP接続を追加',
                 ),
-                _field(_httpId, 'HTTP ID', enabled),
+                _field(_httpId, '接続ID', enabled),
                 _field(
                   _endpoint,
                   widget.tklDeliveryOnly
-                      ? 'TKL HTTPS service root (ends with /)'
-                      : 'HTTPS endpoint',
+                      ? 'TKLのHTTPS接続先（末尾は /）'
+                      : 'HTTPS接続先',
                   enabled,
                 ),
                 if (!widget.tklDeliveryOnly)
                   CheckboxListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('Requires bearer token'),
+                    title: const Text('認証が必要'),
                     value: _requiresBearer,
                     // Given this new definition, When toggled, Then change only form intent.
                     onChanged: enabled
                         ? (value) {
-                            if (_current(controller)) {
+                            if (_technicalCurrent(controller)) {
                               setState(() => _requiresBearer = value ?? true);
                             }
                           }
@@ -342,7 +377,7 @@ class _SubmissionSettingsPageState extends State<SubmissionSettingsPage> {
                 TextButton(
                   // Given form input, When explicitly tapped, Then add one HTTPS definition.
                   onPressed: enabled ? () => _addHttp(controller) : null,
-                  child: const Text('Add HTTP'),
+                  child: const Text('HTTP接続を追加'),
                 ),
               ],
             ],
@@ -358,6 +393,7 @@ class _HttpSettingsEditor extends StatefulWidget {
     required this.controller,
     required this.connection,
     required this.snapshot,
+    required this.technicalCurrent,
     this.tklDeliveryOnly = false,
     super.key,
   });
@@ -365,6 +401,7 @@ class _HttpSettingsEditor extends StatefulWidget {
   final SubmissionSettingsController controller;
   final HttpSubmissionConnection connection;
   final SubmissionConfigurationSnapshot snapshot;
+  final bool Function() technicalCurrent;
   final bool tklDeliveryOnly;
 
   @override
@@ -415,6 +452,7 @@ class _HttpSettingsEditorState extends State<_HttpSettingsEditor> {
       mounted &&
       identical(controller, widget.controller) &&
       id == widget.connection.id &&
+      widget.technicalCurrent() &&
       !controller.busy &&
       !controller.isDetached;
 
@@ -441,22 +479,22 @@ class _HttpSettingsEditorState extends State<_HttpSettingsEditor> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Divider(),
-        Text('HTTP ID: $id'),
-        Text('HTTPS endpoint: ${widget.connection.endpoint}'),
-        Text('Requires bearer token: ${widget.connection.requiresBearerToken}'),
+        Text('接続ID: $id'),
+        Text('HTTPS接続先: ${widget.connection.endpoint}'),
+        Text('認証が必要: ${widget.connection.requiresBearerToken ? '必要' : '不要'}'),
         if (!widget.tklDeliveryOnly) ...[
           Text(
-            'Reference access: ${declaration == null
-                ? 'Unknown'
+            '原本の参照設定: ${declaration == null
+                ? '未確認'
                 : declaration.isEmpty
-                ? 'No access'
+                ? '参照先なし'
                 : declaration.join(', ')}',
           ),
-          const Text('Does not grant or verify remote permissions'),
+          const Text('この設定だけではリモート側の許可は付与・確認されません'),
           for (final drive in widget.snapshot.driveConnections)
             CheckboxListTile(
               contentPadding: EdgeInsets.zero,
-              title: Text('Reference access to ${drive.id}'),
+              title: Text('${drive.id}の原本を参照'),
               value: _selected.contains(drive.id),
               // Given this exact declaration draft, When toggled, Then change only local intent.
               onChanged: enabled
@@ -488,7 +526,7 @@ class _HttpSettingsEditorState extends State<_HttpSettingsEditor> {
                     }
                   }
                 : null,
-            child: const Text('Save reference access declaration'),
+            child: const Text('原本の参照設定を保存'),
           ),
         ],
         if (controller.hasHttpCredentialWriter) ...[
@@ -498,7 +536,7 @@ class _HttpSettingsEditorState extends State<_HttpSettingsEditor> {
             obscureText: true,
             autocorrect: false,
             enableSuggestions: false,
-            decoration: InputDecoration(labelText: 'Bearer token for $id'),
+            decoration: InputDecoration(labelText: '$idの認可情報（検証・初期設定用）'),
           ),
           Wrap(
             spacing: 8,
@@ -508,14 +546,14 @@ class _HttpSettingsEditorState extends State<_HttpSettingsEditor> {
                 onPressed: enabled
                     ? () => _credential(controller, id, clear: false)
                     : null,
-                child: const Text('Set credential'),
+                child: const Text('認可情報を設定'),
               ),
               TextButton(
                 // Given explicit revocation, When Clear is tapped, Then send null for this ID.
                 onPressed: enabled
                     ? () => _credential(controller, id, clear: true)
                     : null,
-                child: const Text('Clear credential'),
+                child: const Text('認可情報を解除'),
               ),
             ],
           ),
@@ -524,3 +562,23 @@ class _HttpSettingsEditorState extends State<_HttpSettingsEditor> {
     );
   }
 }
+
+String _authorizationLabel(SubmissionAuthorizationState? state) => switch (state) {
+  SubmissionAuthorizationState.available => '利用可能',
+  SubmissionAuthorizationState.authorizationRequired => '認証が必要',
+  SubmissionAuthorizationState.unavailable => '利用不可',
+  null => '未確認',
+};
+
+String _configurationFailureLabel(String? code) => switch (code) {
+  'configurationInvalid' => '送信設定を確認してください。',
+  'connectionConflict' => '同じ接続IDに別の設定が登録されています。',
+  'connectionMissing' => '接続先が設定されていません。',
+  'configurationClosed' => 'この送信設定は閉じられました。',
+  'authorizationRequired' => '認証が必要です。',
+  'authorizationCancelled' => '認証を取り消しました。',
+  'authorizationBusy' => '認証の処理中です。',
+  'foregroundRequired' => 'アプリを開いて認証してください。',
+  'credentialUnavailable' => '認可情報を利用できません。',
+  _ => '送信設定を読み込めませんでした。',
+};

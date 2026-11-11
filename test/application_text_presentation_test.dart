@@ -551,8 +551,8 @@ void main() {
               tester.widget<SettingsShell>(find.byType(SettingsShell)).view,
               same(driver.settings),
             );
-            _scaled(tester, 'Settings', system, multiplier, logicalSize: 20);
-            _scaled(tester, 'Text size', system, multiplier);
+            _scaled(tester, '設定', system, multiplier, logicalSize: 20);
+            _scaled(tester, '文字サイズ', system, multiplier);
             expect(driver.storage.readCount, 0);
             expect(driver.storage.writeCount, 0);
           },
@@ -804,28 +804,23 @@ void main() {
           // Then native title and rows retain full size with a growing toolbar.
           _scaled(
             tester,
-            'Settings',
+            '設定',
             const TextScaler.linear(2),
             1.30,
             logicalSize: cupertino ? 17 : 20,
           );
-          _scaled(tester, 'Text size', const TextScaler.linear(2), 1.30);
+          _scaled(tester, '文字サイズ', const TextScaler.linear(2), 1.30);
           if (cupertino) expect(find.byType(Material), findsNothing);
           // When the scrollable native shell reaches its status text.
           await _reach(
             tester,
-            find.text('Settings not loaded'),
+            find.text('設定をまだ読み込んでいません'),
             scrollable: _settingsScroll(),
           );
           // Then the current read/unsaved status remains readable without a save claim.
-          _scaled(
-            tester,
-            'Settings not loaded',
-            const TextScaler.linear(2),
-            1.30,
-          );
-          _untruncated(tester, 'Settings not loaded');
-          expect(find.text('Changes saved'), findsNothing);
+          _scaled(tester, '設定をまだ読み込んでいません', const TextScaler.linear(2), 1.30);
+          _untruncated(tester, '設定をまだ読み込んでいません');
+          expect(find.text('設定を保存しました'), findsNothing);
           // When the common chooser is opened and Standard is reached.
           await _openChoice(tester, CommonSettings.textSizeMultiplier.id);
           final standard = find.byKey(
@@ -838,7 +833,7 @@ void main() {
           expect(driver.settings.value(CommonSettings.textSizeMultiplier), 1.0);
           _scaled(
             tester,
-            'Settings',
+            '設定',
             const TextScaler.linear(2),
             1.0,
             logicalSize: cupertino ? 17 : 20,
@@ -952,24 +947,21 @@ void main() {
           // Then native reset title/content retain complete text at their full roles.
           _scaled(
             tester,
-            'Reset common settings?',
+            '共通設定を初期値に戻しますか？',
             const TextScaler.linear(2),
             1.30,
             logicalSize: cupertino ? 17 : null,
           );
           _scaled(
             tester,
-            'Restore common defaults. Application settings are kept.',
+            '共通設定を初期値に戻します。アプリ固有の設定は保持されます。',
             const TextScaler.linear(2),
             1.30,
             logicalSize: cupertino ? 13 : null,
           );
           final cancel = find.byKey(const ValueKey('settings-reset-cancel'));
-          _untruncated(tester, 'Reset common settings?');
-          _untruncated(
-            tester,
-            'Restore common defaults. Application settings are kept.',
-          );
+          _untruncated(tester, '共通設定を初期値に戻しますか？');
+          _untruncated(tester, '共通設定を初期値に戻します。アプリ固有の設定は保持されます。');
           // When native Cancel is tapped inside its reachable screen intersection.
           await _tapReachable(tester, cancel);
           // Then native Cancel produces no intent or persistence inference.
@@ -1047,7 +1039,7 @@ void main() {
           // Then the already-open role uses nonlinear OS math at its native font size.
           _scaled(
             tester,
-            'Standard',
+            '標準',
             const _Nonlinear(),
             1.15,
             logicalSize: cupertino ? 21 : null,
@@ -1066,7 +1058,7 @@ void main() {
           // Then its existing route updates rendered text without creating preference intent.
           _scaled(
             tester,
-            'Standard',
+            '標準',
             const TextScaler.linear(2),
             1.15,
             logicalSize: cupertino ? 21 : null,
@@ -1091,7 +1083,7 @@ void main() {
           // Then existing modal text updates once and retains native action authority.
           _scaled(
             tester,
-            'Standard',
+            '標準',
             const TextScaler.linear(2),
             1.30,
             logicalSize: cupertino ? 21 : null,
@@ -1099,7 +1091,7 @@ void main() {
           if (cupertino) {
             _scaled(
               tester,
-              'Cancel',
+              'キャンセル',
               const TextScaler.linear(2),
               1.30,
               logicalSize: 21,
@@ -1108,7 +1100,7 @@ void main() {
           expect(inner.pushes, pushes);
           // When the native modal action closes only the nearest chooser.
           if (cupertino) {
-            await _tapReachable(tester, find.text('Cancel'));
+            await _tapReachable(tester, find.text('キャンセル'));
           } else {
             await _tapReachable(
               tester,
@@ -1145,28 +1137,28 @@ void main() {
           // Then reset title/content/actions recompute using each original logical role.
           _scaled(
             tester,
-            'Reset common settings?',
+            '共通設定を初期値に戻しますか？',
             const _Nonlinear(),
             1.15,
             logicalSize: cupertino ? 17 : null,
           );
           _scaled(
             tester,
-            'Restore common defaults. Application settings are kept.',
+            '共通設定を初期値に戻します。アプリ固有の設定は保持されます。',
             const _Nonlinear(),
             1.15,
             logicalSize: cupertino ? 13 : null,
           );
           _scaled(
             tester,
-            'Cancel',
+            'キャンセル',
             const _Nonlinear(),
             1.15,
             logicalSize: cupertino ? 16.8 : null,
           );
           _scaled(
             tester,
-            'Reset',
+            '初期値に戻す',
             const _Nonlinear(),
             1.15,
             logicalSize: cupertino ? 16.8 : null,
