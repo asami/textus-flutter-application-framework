@@ -1,5 +1,18 @@
 # Development phases
 
+## Planned common voice-assisted text input — 2026-11-08
+
+[Voice text input](voice-text-input-plan.md) adds a default voice action to
+eligible framework-standard text fields. One common dialog displays recognized
+text, runs cleanup only on explicit Convert, and changes the calling field only
+on explicit Apply. Core owns Android/iPhone speech and on-device AI capabilities;
+Framework owns the reusable field/dialog interaction. Implementation and device
+acceptance are pending. The subsequent November 8 user decision selects it
+for the demo under [App Phase 7.2](../../../../Project2026/nict-editing-studio-app/docs/phase/phase-7.2.md),
+including offline cleanup and avoided commercial AI API charges. Preserve
+numbered Phase identities and current acceptance. This is required for the
+expanded demo scope, not a claim that implementation has started.
+
 [Phase 5 — Presentation for Firebase-backed services](phase-5.md) is planned for later delivery. Progress is recorded in the [Phase 5 checklist](phase-5-checklist.md).
 
 ## Planned common media actions — 2026-10-31

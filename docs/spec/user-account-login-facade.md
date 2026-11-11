@@ -39,3 +39,16 @@ configuration, not a request for participants to configure storage or tokens.
   do not expose another user's private authenticated views.
 
 Delivery: [integration plan](../phase/user-account-authentication-integration-plan.md).
+
+## Runtime profiles and presentation — 2026-11-02
+
+Follow [shared runtime-mode defaults](https://github.com/asami/goldenport-cncf/blob/main/docs/spec/runtime-mode-security-defaults.md) through Core. Present account and
+a non-secret environment indicator consistently; development fixtures and local
+synthetic demonstrations must not look like authenticated participant evidence.
+UI collection/editing, Fold posture and Flutter build mode cannot change server
+mode, identity or permissions. The common facade owns login/account/environment
+presentation; Book-specific screens do not implement conditional auth bypasses.
+
+Participants need ordinary login only, not mode selection, Bearer strings or
+provider folder IDs. Switching an operator-configured environment follows Core's
+credential/pending-work boundary and must not silently discard or reassign work.
